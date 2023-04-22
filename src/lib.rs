@@ -21,10 +21,17 @@ impl GameSize {
     }
 }
 
+/// Player actions on a given turn.
 enum Action {
+    // Feels a little overloaded - maybe hand indexing needs attention
+
+    // Scouting moves a card from the active set into the hand (it may be flipped)
     Scout(usize, bool, usize),
+    // Showing replaces the active set with a stronger set from the hand
     Show(usize, usize),
+    // Scout and Show simply completes the other two actions in order
     ScoutShow(usize, bool, usize, usize, usize),
+    // Exit
     Quit,
 }
 
@@ -41,6 +48,7 @@ impl std::fmt::Display for Card {
     }
 }
 
+/// Each player has a hand, some points, and their "Scout show" move.
 #[derive(Debug, Default, Clone)]
 pub struct Player {
     hand: Vec<Card>,
@@ -50,6 +58,7 @@ pub struct Player {
 
 impl Player {
     fn draw(&mut self, card: Card) {
+        // Drawing is not actually required during the game - should this be moved to new()?
         self.hand.push(card)
     }
 
@@ -69,6 +78,7 @@ impl Player {
     }
 }
 
+/// A single instance of a Scout game.
 #[derive(Debug, Default)]
 pub struct Game {
     deck: Vec<Card>,
@@ -172,6 +182,7 @@ fn get_player_action() -> Action {
     }
 }
 
+/// Config struct to sanitize user input.
 pub struct Config {
     gamesize: GameSize,
 }
