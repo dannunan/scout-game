@@ -41,7 +41,7 @@ impl std::fmt::Display for Card {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Player {
     hand: Vec<Card>,
     score: i32,
@@ -69,7 +69,7 @@ impl Player {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Game {
     deck: Vec<Card>,
     players: Vec<Player>,
