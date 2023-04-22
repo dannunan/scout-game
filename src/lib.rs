@@ -6,8 +6,11 @@ use rand::thread_rng;
 use std::{error::Error, io};
 
 enum GameSize {
+    /// 3 players with 12 cards.
     THREE,
+    /// 4 players with 11 cards.
     FOUR,
+    /// 5 players with 9 cards.
     FIVE,
 }
 
@@ -23,15 +26,13 @@ impl GameSize {
 
 /// Player actions on a given turn.
 enum Action {
-    // Feels a little overloaded - maybe hand indexing needs attention
-
-    // Scouting moves a card from the active set into the hand (it may be flipped)
+    /// Scouting moves a card from the active set into the hand (it may be flipped)
     Scout(usize, bool, usize),
-    // Showing replaces the active set with a stronger set from the hand
+    /// Showing replaces the active set with a stronger set from the hand
     Show(usize, usize),
-    // Scout and Show simply completes the other two actions in order
+    /// Scout and Show simply completes the other two actions in order
     ScoutShow(usize, bool, usize, usize, usize),
-    // Exit
+    /// Exit
     Quit,
 }
 
