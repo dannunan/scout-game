@@ -9,6 +9,11 @@ fn main() {
     println!("Scout!");
 
     let args: Vec<String> = env::args().collect();
+
+    if args.len() < 1 {
+        println!("Missing arguments: n_players");
+        process::exit(1);
+    }
     let config = Config::new(&args).unwrap_or_else(|err| {
         println!("Error parsing arguments: {}", err);
         process::exit(1);
