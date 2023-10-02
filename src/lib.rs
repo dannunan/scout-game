@@ -119,7 +119,7 @@ impl Player {
 
 /// A single instance of a Scout game.
 #[derive(Debug, Default)]
-pub struct Game {
+pub struct GameState {
     deck: Vec<Card>,
     players: Vec<Player>,
     active: Vec<Card>,
@@ -162,11 +162,11 @@ fn create_deck(game_size: &GameSize) -> Vec<Card> {
     deck
 }
 
-impl Game {
+impl GameState {
     fn new(n: GameSize, shuffle: bool) -> Self {
         println!("Creating {} player game", n.as_usize());
 
-        let mut game = Game {
+        let mut game = GameState {
             active: Vec::<Card>::new(),
             deck: create_deck(&n),
             players: vec![Default::default(); n.as_usize()],
@@ -202,9 +202,11 @@ impl Game {
     }
 }
 
-type Strategy = fn(Game) -> Action;
+// Strategies are ways of generating Actions based on GameState
 
-fn get_player_action() -> Action {
+type Strategy = fn(GameState) -> Action;
+
+fn get_player_action(state: GameState) -> Action {
     let mut action = String::new();
     println!("Select action:");
     io::stdin()
@@ -218,7 +220,7 @@ fn get_player_action() -> Action {
         _ => {
             println!("Not a valid action!");
             println!("{}", action.as_str());
-            get_player_action()
+            get_player_action(state)
         }
     }
 }
@@ -241,10 +243,10 @@ impl Config {
 }
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let game = Game::new(config.gamesize, true);
+    let game = GameState::new(config.gamesize, true);
 
     game.players[0].print_hand();
-    let action = get_player_action();
+    let action = get_player_action(game);
 
     Ok(())
 }
@@ -255,11 +257,11 @@ mod tests {
 
     #[test]
     fn test_game_init() {
-        let game = Game::new(GameSize::THREE, false);
+        let game = GameState::new(GameSize::THREE, false);
         assert_eq!(game.players[0].hand.len(), 12);
-        let game = Game::new(GameSize::FOUR, false);
+        let game = GameState::new(GameSize::FOUR, false);
         assert_eq!(game.players[0].hand.len(), 11);
-        let game = Game::new(GameSize::FIVE, false);
+        let game = GameState::new(GameSize::FIVE, false);
         assert_eq!(game.players[0].hand.len(), 9);
     }
 }
