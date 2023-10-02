@@ -202,6 +202,8 @@ impl Game {
     }
 }
 
+type Strategy = fn(Game) -> Action;
+
 fn get_player_action() -> Action {
     let mut action = String::new();
     println!("Select action:");
