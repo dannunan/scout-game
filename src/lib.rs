@@ -3,6 +3,7 @@
 
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use std::collections::HashMap;
 use std::{error::Error, io};
 
 enum GameSize {
@@ -49,10 +50,47 @@ impl std::fmt::Display for Card {
     }
 }
 
+type Set = Vec<Card>;
+type Hand = Vec<Card>;
+
+pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
+    // Generate all legal sets, and assign an i32 value to each.
+    // This is done by generating the sets in order of their value
+
+    // All single card sets
+    // All runs of len 2
+
+    let mut map = HashMap::new();
+    let mut i = 0;
+
+    // For size=1 straights and flushes are identical
+    for base in 1..10 {
+        i = i + 1;
+        map.insert(vec![base], i);
+    }
+
+    // Iterate up to max Set size
+    for size in 2..10 {
+        // First add all straights (ascending and descending)
+        for base in 1..10 {
+            i = i + 1;
+            map.insert((base..=size).collect(), i);
+            map.insert((base..=size).rev().collect(), i);
+        }
+        // Then add all flushes (this is done after to preserve order)
+        for base in 1..10 {
+            i = i + 1;
+            map.insert(vec![base; size.try_into().unwrap()], i);
+        }
+    }
+
+    map
+}
+
 /// Each player has a hand, some points, and their "Scout show" move.
 #[derive(Debug, Default, Clone)]
 pub struct Player {
-    hand: Vec<Card>,
+    hand: Hand,
     score: i32,
     scoutshow: bool,
 }
