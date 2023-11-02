@@ -6,27 +6,8 @@ use rand::thread_rng;
 use std::collections::HashMap;
 use std::{error::Error, io};
 
-enum GameSize {
-    /// 3 players with 12 cards.
-    THREE,
-    /// 4 players with 11 cards.
-    FOUR,
-    /// 5 players with 9 cards.
-    FIVE,
-}
-
-impl GameSize {
-    fn as_usize(&self) -> usize {
-        match self {
-            Self::THREE => 3,
-            Self::FOUR => 4,
-            Self::FIVE => 5,
-        }
-    }
-}
-
 /// Player actions on a given turn.
-enum Action {
+pub enum Action {
     /// Scouting moves a card from the active set into the hand (it may be flipped)
     Scout(usize, bool, usize),
     /// Showing replaces the active set with a stronger set from the hand
@@ -127,10 +108,10 @@ pub struct GameState {
     first_player: usize,
 }
 
-fn create_deck(game_size: &GameSize) -> Vec<Card> {
+fn create_deck(game_size: usize) -> Vec<Card> {
     let mut deck: Vec<Card> = Vec::new();
     match game_size {
-        GameSize::THREE => {
+        3 => {
             // Each unique combination of 1-9, excluding matches
             for bottom in 1..10 {
                 for top in 1..bottom {
@@ -138,7 +119,7 @@ fn create_deck(game_size: &GameSize) -> Vec<Card> {
                 }
             }
         }
-        GameSize::FOUR => {
+        4 => {
             // Each unique combination of 1-10, excluding matches and (10/9)
             for bottom in 1..10 {
                 for top in 1..bottom {
@@ -149,7 +130,7 @@ fn create_deck(game_size: &GameSize) -> Vec<Card> {
                 deck.push(Card(top, 10));
             }
         }
-        GameSize::FIVE => {
+        5 => {
             // Each unique combination of 1-10, excluding matches
             for bottom in 1..11 {
                 for top in 1..bottom {
@@ -157,19 +138,20 @@ fn create_deck(game_size: &GameSize) -> Vec<Card> {
                 }
             }
         }
+        _ => {}
     }
     // Do shuffle?
     deck
 }
 
 impl GameState {
-    fn new(n: GameSize, shuffle: bool) -> Self {
-        println!("Creating {} player game", n.as_usize());
+    fn new(n: usize, shuffle: bool) -> Self {
+        println!("Creating {} player game", n);
 
         let mut game = GameState {
             active: Vec::<Card>::new(),
-            deck: create_deck(&n),
-            players: vec![Default::default(); n.as_usize()],
+            deck: create_deck(n),
+            players: vec![Default::default(); n],
             active_owner: 0,
             first_player: 0,
         };
@@ -204,7 +186,7 @@ impl GameState {
 
 // Strategies are ways of generating Actions based on GameState
 
-type Strategy = fn(GameState) -> Action;
+pub type Strategy = fn(GameState) -> Action;
 
 fn get_player_action(state: GameState) -> Action {
     let mut action = String::new();
@@ -225,25 +207,13 @@ fn get_player_action(state: GameState) -> Action {
     }
 }
 
-/// Config struct to sanitize user input.
-pub struct Config {
-    gamesize: GameSize,
+pub struct Game {
+    state: GameState,
+    strategies: Vec<Strategy>,
 }
 
-impl Config {
-    pub fn new(args: &[String]) -> Result<Config, &str> {
-        let gamesize = match args[1].trim() {
-            "3" => GameSize::THREE,
-            "4" => GameSize::FOUR,
-            "5" => GameSize::FIVE,
-            _ => return Err("Invalid game size"),
-        };
-        Ok(Config { gamesize })
-    }
-}
-
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let game = GameState::new(config.gamesize, true);
+pub fn run(strategies: Vec<Strategy>) -> Result<(), Box<dyn Error>> {
+    let game = GameState::new(strategies.len(), true);
 
     game.players[0].print_hand();
     let action = get_player_action(game);
@@ -257,11 +227,11 @@ mod tests {
 
     #[test]
     fn test_game_init() {
-        let game = GameState::new(GameSize::THREE, false);
+        let game = GameState::new(3, false);
         assert_eq!(game.players[0].hand.len(), 12);
-        let game = GameState::new(GameSize::FOUR, false);
+        let game = GameState::new(4, false);
         assert_eq!(game.players[0].hand.len(), 11);
-        let game = GameState::new(GameSize::FIVE, false);
+        let game = GameState::new(5, false);
         assert_eq!(game.players[0].hand.len(), 9);
     }
 }
