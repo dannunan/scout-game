@@ -161,7 +161,8 @@ impl GameState {
         if flip {
             card = card.flip();
         }
-        self.players[0].hand.insert(index, card)
+        self.players[0].hand.insert(index, card);
+        self.players[self.active_owner].score += 1;
     }
 
     fn show(&mut self, start: usize, stop: usize) {
