@@ -3,17 +3,20 @@
 
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::{error::Error, io};
 
 /// Player actions on a given turn.
 pub enum Action {
     /// Scouting moves a card from the active set into the hand (it may be flipped)
-    Scout(usize, bool, usize),
+    /// Specified with (left, flip, insert)
+    Scout(bool, bool, usize),
     /// Showing replaces the active set with a stronger set from the hand
+    /// Specified with (start, stop)
     Show(usize, usize),
     /// Scout and Show simply completes the other two actions in order
-    ScoutShow(usize, bool, usize, usize, usize),
+    /// Specified with (left, flip, insert, start, stop)
+    ScoutShow(bool, bool, usize, usize, usize),
     /// Exit
     Quit,
 }
@@ -21,18 +24,18 @@ pub enum Action {
 #[derive(Debug, Clone)]
 pub struct Card(i32, i32);
 
-fn flip(card: Card) -> Card {
-    Card(card.1, card.0)
+impl Card {
+    fn flip(&self) -> Card {
+        Card(self.1, self.0)
+    }
 }
-
 impl std::fmt::Display for Card {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "({}, {})", self.0, self.1)
     }
 }
 
-type Set = Vec<Card>;
-type Hand = Vec<Card>;
+type Set = VecDeque<Card>;
 
 pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
     // Generate all legal sets, and assign an i32 value to each.
@@ -71,43 +74,27 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
 /// Each player has a hand, some points, and their "Scout show" move.
 #[derive(Debug, Default, Clone)]
 pub struct Player {
-    hand: Hand,
+    hand: Set,
     score: i32,
     scout_show: bool,
-}
-
-impl Player {
-    fn draw(&mut self, card: Card) {
-        // Drawing is not actually required during the game - should this be moved to new()?
-        self.hand.push(card)
-    }
-
-    fn scout(&mut self, mut card: Card, index: i32, flip_card: bool) {
-        if flip_card {
-            card = flip(card)
-        }
-        self.hand.insert(index.try_into().unwrap(), card)
-    }
 }
 
 /// A single instance of a Scout game.
 #[derive(Debug, Default)]
 pub struct GameState {
-    deck: Vec<Card>,
-    players: Vec<Player>,
-    active: Vec<Card>,
+    players: VecDeque<Player>,
+    active: Set,
     active_owner: usize,
-    first_player: usize,
 }
 
-fn create_deck(game_size: usize) -> Vec<Card> {
-    let mut deck: Vec<Card> = Vec::new();
+fn create_deck(game_size: usize, shuffle: bool) -> Set {
+    let mut deck: Set = VecDeque::new();
     match game_size {
         3 => {
             // Each unique combination of 1-9, excluding matches
             for bottom in 1..10 {
                 for top in 1..bottom {
-                    deck.push(Card(top, bottom));
+                    deck.push_back(Card(top, bottom));
                 }
             }
         }
@@ -115,25 +102,27 @@ fn create_deck(game_size: usize) -> Vec<Card> {
             // Each unique combination of 1-10, excluding matches and (10/9)
             for bottom in 1..10 {
                 for top in 1..bottom {
-                    deck.push(Card(top, bottom));
+                    deck.push_back(Card(top, bottom));
                 }
             }
             for top in 1..9 {
-                deck.push(Card(top, 10));
+                deck.push_back(Card(top, 10));
             }
         }
         5 => {
             // Each unique combination of 1-10, excluding matches
             for bottom in 1..11 {
                 for top in 1..bottom {
-                    deck.push(Card(top, bottom));
+                    deck.push_back(Card(top, bottom));
                 }
             }
         }
         _ => {}
     }
-    // Do shuffle?
-    deck
+    if shuffle {
+        deck.make_contiguous().shuffle(&mut thread_rng());
+    }
+    return deck;
 }
 
 impl GameState {
@@ -141,38 +130,61 @@ impl GameState {
         println!("Creating {} player game", n);
 
         let mut game = GameState {
-            active: Vec::<Card>::new(),
-            deck: create_deck(n),
-            players: vec![Default::default(); n],
+            active: Set::new(),
+            players: VecDeque::from(vec![Default::default(); n]),
             active_owner: 0,
-            first_player: 0,
         };
 
-        println!("Using {} card deck", game.deck.len());
-        if shuffle {
-            game.deck.shuffle(&mut thread_rng());
+        let mut deck = create_deck(n, true);
+
+        println!("Using {} card deck", deck.len());
+        if shuffle {}
+
+        // Deal out all cards
+        let mut player_index = 0;
+        for card in deck.drain(..) {
+            game.players[player_index].hand.push_back(card);
+            player_index = (player_index + 1) % n;
         }
-        game.deal();
         game
     }
 
-    fn deal(&mut self) {
-        let n_players = self.players.len();
-        let mut player_index = 0;
-        for card in self.deck.drain(..) {
-            self.players[player_index].draw(card);
-            player_index = (player_index + 1) % n_players;
+    fn scout(&mut self, left: bool, flip: bool, index: usize) {
+        let mut card: Card;
+        if left {
+            card = self.active.pop_front().unwrap();
+        } else {
+            card = self.active.pop_back().unwrap();
+        }
+        if flip {
+            card = card.flip();
+        }
+        self.players[0].hand.insert(index, card)
+    }
+
+    fn show(&mut self, start: usize, stop: usize) {
+        self.players[0].score += self.active.len() as i32;
+        self.active.clear();
+        for _ in start..stop {
+            self.active
+                .push_back(self.players[0].hand.remove(start).unwrap())
         }
     }
 
-    fn scout(&mut self, index: usize) -> Card {
-        self.active.remove(index)
-    }
-
-    fn show(&mut self, set: Vec<Card>) -> usize {
-        let score = self.active.len();
-        self.active = set;
-        score
+    fn take_action(&mut self, action: &Action) {
+        match action {
+            Action::Scout(left, flip, index) => {
+                self.scout(*left, *flip, *index);
+            }
+            Action::Show(start, stop) => {
+                self.show(*start, *stop);
+            }
+            Action::ScoutShow(left, flip, index, start, stop) => {
+                self.scout(*left, *flip, *index);
+                self.show(*start, *stop);
+            }
+            Action::Quit => {}
+        }
     }
 
     fn check_victory(&mut self) -> bool {
@@ -215,9 +227,9 @@ pub fn get_player_action(state: &GameState) -> Action {
         .read_line(&mut action)
         .expect("Failed to read line");
     match action.trim() {
-        "Scout" => Action::Scout(0, false, 0),
+        "Scout" => Action::Scout(true, false, 0),
         "Show" => Action::Show(0, 0),
-        "Scout and show" => Action::ScoutShow(0, false, 0, 0, 0),
+        "Scout and show" => Action::ScoutShow(true, false, 0, 0, 0),
         "Quit" => Action::Quit,
         _ => {
             println!("Not a valid action!");
@@ -239,7 +251,7 @@ pub fn run(strategies: Vec<Strategy>) -> Result<(), Box<dyn Error>> {
 
     loop {
         let action = get_player_action(&game);
-        game = game.take_action(action);
+        game.take_action(&action);
         if game.check_victory() {
             break;
         }
