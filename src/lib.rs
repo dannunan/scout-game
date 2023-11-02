@@ -188,6 +188,11 @@ fn print_set(set: &Set) {
 pub type Strategy = fn(GameState) -> Action;
 
 pub fn get_player_action(state: GameState) -> Action {
+    // Print some info
+    println!("Active Set:");
+    print_set(&state.active);
+    println!("\nHand:");
+    print_set(&state.players[0].hand);
     let mut action = String::new();
     println!("Select action:");
     io::stdin()
