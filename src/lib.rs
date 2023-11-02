@@ -68,7 +68,7 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
         }
     }
 
-    map
+    return map;
 }
 
 /// Each player has a hand, some points, and their "Scout show" move.
@@ -148,7 +148,7 @@ impl GameState {
             game.players[player_index].hand.push_back(card);
             player_index = (player_index + 1) % n;
         }
-        game
+        return game;
     }
 
     fn scout(&mut self, left: bool, flip: bool, index: usize) {
@@ -171,7 +171,7 @@ impl GameState {
             self.active
                 .push_back(self.players[0].hand.remove(start).unwrap())
         }
-        self.active_owner = 0
+        self.active_owner = 0;
     }
 
     fn take_action(&mut self, action: &Action) {
@@ -202,7 +202,7 @@ impl GameState {
             self.players[1].score += hand_size as i32;
             return true;
         } else {
-            false
+            return false;
         }
     }
 
