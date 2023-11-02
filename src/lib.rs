@@ -73,7 +73,7 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
 pub struct Player {
     hand: Hand,
     score: i32,
-    scoutshow: bool,
+    scout_show: bool,
 }
 
 impl Player {
