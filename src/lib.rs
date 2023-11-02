@@ -171,6 +171,7 @@ impl GameState {
             self.active
                 .push_back(self.players[0].hand.remove(start).unwrap())
         }
+        self.active_owner = 0
     }
 
     fn take_action(&mut self, action: &Action) {
