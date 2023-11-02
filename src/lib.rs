@@ -83,6 +83,7 @@ pub struct Player {
 #[derive(Debug, Default)]
 pub struct GameState {
     players: VecDeque<Player>,
+    game_size: usize,
     active: Set,
     active_owner: usize,
 }
@@ -131,6 +132,7 @@ impl GameState {
 
         let mut game = GameState {
             active: Set::new(),
+            game_size: n,
             players: VecDeque::from(vec![Default::default(); n]),
             active_owner: 0,
         };
@@ -202,6 +204,11 @@ impl GameState {
             false
         }
     }
+
+    fn rotate_left(&mut self) {
+        self.players.rotate_left(1);
+        self.active_owner = (self.active_owner + self.game_size - 1) % self.game_size;
+    }
 }
 
 fn print_set(set: &Set) {
@@ -253,9 +260,10 @@ pub fn run(strategies: Vec<Strategy>) -> Result<(), Box<dyn Error>> {
         let action = get_player_action(&game);
         game.take_action(&action);
         if game.check_victory() {
+            println!("Player {} wins!", turn);
             break;
         }
-
+        game.rotate_left();
         turn = (turn + 1) % n_players;
     }
 
