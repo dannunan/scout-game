@@ -82,14 +82,6 @@ impl Player {
         self.hand.push(card)
     }
 
-    fn print_hand(&self) {
-        print!("Hand: ");
-        for card in &self.hand {
-            print!(" {}", card)
-        }
-        println!("");
-    }
-
     fn scout(&mut self, mut card: Card, index: i32, flip_card: bool) {
         if flip_card {
             card = flip(card)
@@ -184,6 +176,13 @@ impl GameState {
     }
 }
 
+fn print_set(set: &Set) {
+    for card in set {
+        print!(" {}", card)
+    }
+    print!("\n");
+}
+
 // Strategies are ways of generating Actions based on GameState
 
 pub type Strategy = fn(GameState) -> Action;
@@ -215,7 +214,6 @@ pub struct Game {
 pub fn run(strategies: Vec<Strategy>) -> Result<(), Box<dyn Error>> {
     let game = GameState::new(strategies.len(), true);
 
-    game.players[0].print_hand();
     let action = get_player_action(game);
 
     Ok(())
