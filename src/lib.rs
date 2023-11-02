@@ -188,7 +188,7 @@ impl GameState {
 
 pub type Strategy = fn(GameState) -> Action;
 
-fn get_player_action(state: GameState) -> Action {
+pub fn get_player_action(state: GameState) -> Action {
     let mut action = String::new();
     println!("Select action:");
     io::stdin()
