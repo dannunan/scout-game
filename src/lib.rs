@@ -174,6 +174,22 @@ impl GameState {
         self.active = set;
         score
     }
+
+    fn check_victory(&mut self) -> bool {
+        // Round ends if current player has emptied hand
+        let hand_size = self.players[0].hand.len();
+        if hand_size == 0 {
+            return true;
+        // Round ends if active player is next player
+        } else if self.active_owner == 1 {
+            // In this case, offset this players points by hand size
+            // Smelly inplace method!
+            self.players[1].score += hand_size as i32;
+            return true;
+        } else {
+            false
+        }
+    }
 }
 
 fn print_set(set: &Set) {
@@ -217,9 +233,19 @@ pub struct Game {
 }
 
 pub fn run(strategies: Vec<Strategy>) -> Result<(), Box<dyn Error>> {
-    let game = GameState::new(strategies.len(), true);
+    let n_players = strategies.len();
+    let mut game = GameState::new(n_players, true);
+    let mut turn = 0;
 
-    let action = get_player_action(game);
+    loop {
+        let action = get_player_action(&game);
+        game = game.take_action(action);
+        if game.check_victory() {
+            break;
+        }
+
+        turn = (turn + 1) % n_players;
+    }
 
     Ok(())
 }
