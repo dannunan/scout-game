@@ -225,12 +225,12 @@ pub type Strategy = fn(&GameState) -> Action;
 
 pub fn get_player_action(state: &GameState) -> Action {
     // Print some info
-    println!("Active Set:");
+    println!("\nActive Set:");
     print_set(&state.active);
-    println!("\nHand:");
+    println!("\nPoints: {} Hand:", state.players[0].score);
     print_set(&state.players[0].hand);
     let mut action = String::new();
-    println!("Select action:");
+    println!("\nSelect action:");
     io::stdin()
         .read_line(&mut action)
         .expect("Failed to read line");
