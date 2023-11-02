@@ -167,7 +167,7 @@ impl GameState {
     fn show(&mut self, start: usize, stop: usize) {
         self.players[0].score += self.active.len() as i32;
         self.active.clear();
-        for _ in start..stop {
+        for _ in start..stop + 1 {
             self.active
                 .push_back(self.players[0].hand.remove(start).unwrap())
         }
