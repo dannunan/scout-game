@@ -201,9 +201,9 @@ fn print_set(set: &Set) {
 
 // Strategies are ways of generating Actions based on GameState
 
-pub type Strategy = fn(GameState) -> Action;
+pub type Strategy = fn(&GameState) -> Action;
 
-pub fn get_player_action(state: GameState) -> Action {
+pub fn get_player_action(state: &GameState) -> Action {
     // Print some info
     println!("Active Set:");
     print_set(&state.active);
