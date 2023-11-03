@@ -253,7 +253,7 @@ pub fn get_player_action(state: &GameState) -> Action {
         "Scout" => Action::Scout(true, false, 0),
         "Show" => Action::Show(0, 0),
         "Scout and show" => Action::ScoutShow(true, false, 0, 0, 0),
-        "Quit" => Action::Quit,
+        "Quit" => panic!(),
         _ => {
             println!("Not a valid action!");
             println!("{}", action.as_str());
