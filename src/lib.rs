@@ -206,6 +206,7 @@ impl GameState {
     }
 
     fn check_victory(&mut self) -> bool {
+        // TODO: bad inplace mut will be confusing when used as part of a decision tree
         // Round ends if current player has emptied hand
         let hand_size = self.players[0].hand.len();
         if hand_size == 0 {
@@ -222,6 +223,7 @@ impl GameState {
     }
 
     fn rotate_left(&mut self) {
+        // Maybe combine with check victory to return some kind of Result?
         self.players.rotate_left(1);
         self.active_owner = (self.active_owner + self.game_size - 1) % self.game_size;
     }
@@ -274,7 +276,7 @@ pub fn run(strategies: Vec<Strategy>) -> Result<(), Box<dyn Error>> {
 
     loop {
         let action = get_player_action(&game);
-        game.take_action(&action);
+        game = game.take_action(&action);
         if game.check_victory() {
             println!("Player {} wins!", turn);
             break;
