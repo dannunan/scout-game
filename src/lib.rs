@@ -17,8 +17,6 @@ pub enum Action {
     /// Scout and Show simply completes the other two actions in order
     /// Specified with (left, flip, insert, start, stop)
     ScoutShow(bool, bool, usize, usize, usize),
-    /// Exit
-    Quit,
 }
 
 #[derive(Debug, Clone)]
@@ -151,43 +149,59 @@ impl GameState {
         return game;
     }
 
-    fn scout(&mut self, left: bool, flip: bool, index: usize) {
+    fn scout(&self, left: bool, flip: bool, index: usize) -> GameState {
+        let mut players = self.players.clone();
+        let game_size = self.game_size;
+        let mut active = self.active.clone();
+        let active_owner = self.active_owner;
+
         let mut card: Card;
         if left {
-            card = self.active.pop_front().unwrap();
+            card = active.pop_front().unwrap();
         } else {
-            card = self.active.pop_back().unwrap();
+            card = active.pop_back().unwrap();
         }
         if flip {
             card = card.flip();
         }
-        self.players[0].hand.insert(index, card);
-        self.players[self.active_owner].score += 1;
-    }
+        players[0].hand.insert(index, card);
+        players[active_owner].score += 1;
 
-    fn show(&mut self, start: usize, stop: usize) {
-        self.players[0].score += self.active.len() as i32;
-        self.active.clear();
-        for _ in start..stop + 1 {
-            self.active
-                .push_back(self.players[0].hand.remove(start).unwrap())
+        GameState {
+            players,
+            game_size,
+            active,
+            active_owner,
         }
-        self.active_owner = 0;
     }
 
-    fn take_action(&mut self, action: &Action) {
+    fn show(&self, start: usize, stop: usize) -> GameState {
+        let mut players = self.players.clone();
+        let game_size = self.game_size;
+        let mut active = self.active.clone();
+        let active_owner = 0;
+
+        players[0].score += active.len() as i32;
+        active.clear();
+        for _ in start..stop + 1 {
+            active.push_back(players[0].hand.remove(start).unwrap())
+        }
+
+        GameState {
+            players,
+            game_size,
+            active,
+            active_owner,
+        }
+    }
+
+    fn take_action(&self, action: &Action) -> GameState {
         match action {
-            Action::Scout(left, flip, index) => {
-                self.scout(*left, *flip, *index);
-            }
-            Action::Show(start, stop) => {
-                self.show(*start, *stop);
-            }
+            Action::Scout(left, flip, index) => self.scout(*left, *flip, *index),
+            Action::Show(start, stop) => self.show(*start, *stop),
             Action::ScoutShow(left, flip, index, start, stop) => {
-                self.scout(*left, *flip, *index);
-                self.show(*start, *stop);
+                self.scout(*left, *flip, *index).show(*start, *stop)
             }
-            Action::Quit => {}
         }
     }
 
