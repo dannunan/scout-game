@@ -5,9 +5,9 @@ fn main() {
 
     let strategies: Vec<scout::Strategy> = vec![
         scout::get_player_action,
-        scout::get_player_action,
-        scout::get_player_action,
-        scout::get_player_action,
+        scout::strategy_random,
+        scout::strategy_random,
+        scout::strategy_random,
     ];
 
     match scout::run(strategies) {
@@ -15,8 +15,8 @@ fn main() {
             println!("Game over! Scores: {:?}", scores);
             process::exit(0);
         }
-        Err(e) => {
-            println!("Application error: {}", e);
+        Err(game) => {
+            println!("Game halted!: {:?}", game);
             process::exit(1);
         }
     }
