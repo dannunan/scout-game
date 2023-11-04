@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::{HashMap, VecDeque};
-use std::{error::Error, io};
+use std::io;
 
 #[derive(Debug, Clone)]
 pub struct Card(i32, i32);
@@ -174,22 +174,31 @@ fn print_set(set: &Set) {
 }
 
 /// Strategies are ways of generating Actions based on GameState
-pub type Strategy = fn(&GameState) -> Action;
+pub type Strategy = fn(&GameState) -> Option<Action>;
 
-pub fn run(strategies: Vec<Strategy>) -> Result<Vec<i32>, Box<dyn Error>> {
+pub fn run(strategies: Vec<Strategy>) -> Result<Vec<i32>, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut turn = 0;
 
     loop {
         let action = strategies[turn](&game);
-        match game.take_action(&action) {
-            NewGameState::Continue(new) => game = new,
-            NewGameState::GameOver(mut scores) => {
-                scores.rotate_left(turn);
-                return Ok(scores);
+        match action {
+            Some(action) => {
+                match game.take_action(&action) {
+                    NewGameState::Continue(new) => game = new,
+                    NewGameState::GameOver(mut scores) => {
+                        scores.rotate_left(turn);
+                        return Ok(scores);
+                    }
+                };
             }
-        };
+            None => {
+                println!("No actions returned by strategy!");
+                return Err(game);
+            }
+        }
+
         game.rotate_left();
         turn = (turn + 1) % n_players;
     }
@@ -302,7 +311,7 @@ fn get_valid_actions(state: &GameState) -> Vec<Action> {
     return actions;
 }
 
-pub fn get_player_action(state: &GameState) -> Action {
+pub fn get_player_action(state: &GameState) -> Option<Action> {
     // Print some info
     println!("\nActive Set:");
     print_set(&state.active);
@@ -314,9 +323,9 @@ pub fn get_player_action(state: &GameState) -> Action {
         .read_line(&mut action)
         .expect("Failed to read line");
     match action.trim() {
-        "Scout" => Action::Scout(true, false, 0),
-        "Show" => Action::Show(0, 0),
-        "Scout and show" => Action::ScoutShow(true, false, 0, 0, 0),
+        "Scout" => Some(Action::Scout(true, false, 0)),
+        "Show" => Some(Action::Show(0, 0)),
+        "Scout and show" => Some(Action::ScoutShow(true, false, 0, 0, 0)),
         "Quit" => std::process::exit(0),
         _ => {
             println!("Not a valid action! Enter: Scout, Show, Scout and show, or Quit");
@@ -325,10 +334,10 @@ pub fn get_player_action(state: &GameState) -> Action {
     }
 }
 
-pub fn strategy_random(state: &GameState) -> Action {
+pub fn strategy_random(state: &GameState) -> Option<Action> {
     let mut actions = get_valid_actions(state);
     actions.shuffle(&mut thread_rng());
-    return actions.pop().unwrap();
+    return actions.pop();
 }
 
 #[cfg(test)]
