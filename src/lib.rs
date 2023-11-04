@@ -28,7 +28,7 @@ pub enum Action {
     /// Specified with (left, flip, insert)
     Scout(bool, bool, usize),
     /// Showing replaces the active set with a stronger set from the hand
-    /// Specified with (start, stop)
+    /// Specified with (start, stop) inclusive
     Show(usize, usize),
     /// Scout and Show simply completes the other two actions in order
     /// Specified with (left, flip, insert, start, stop)
@@ -182,7 +182,7 @@ pub fn run(strategies: Vec<Strategy>) -> Result<Vec<i32>, Box<dyn Error>> {
     let mut turn = 0;
 
     loop {
-        let action = get_player_action(&game);
+        let action = strategies[turn](&game);
         match game.take_action(&action) {
             NewGameState::Continue(new) => game = new,
             NewGameState::GameOver(mut scores) => {
@@ -239,7 +239,7 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
     let mut i = 0;
 
     // For size=1 straights and flushes are identical
-    for base in 1..10 {
+    for base in 0..10 {
         i = i + 1;
         map.insert(vec![base], i);
     }
@@ -247,13 +247,13 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
     // Iterate up to max Set size
     for size in 2..10 {
         // First add all straights (ascending and descending)
-        for base in 1..10 {
+        for base in 0..10 {
             i = i + 1;
             map.insert((base..=size).collect(), i);
             map.insert((base..=size).rev().collect(), i);
         }
         // Then add all flushes (this is done after to preserve order)
-        for base in 1..10 {
+        for base in 0..10 {
             i = i + 1;
             map.insert(vec![base; size.try_into().unwrap()], i);
         }
@@ -276,11 +276,13 @@ fn get_valid_actions(state: &GameState) -> Vec<Action> {
     let player = &state.players[0];
 
     // Scout actions
-    for i in 0..player.hand.len() {
-        actions.push(Action::Scout(false, false, i));
-        actions.push(Action::Scout(false, true, i));
-        actions.push(Action::Scout(true, false, i));
-        actions.push(Action::Scout(true, true, i));
+    if !state.active.is_empty() {
+        for i in 0..player.hand.len() {
+            actions.push(Action::Scout(false, false, i));
+            actions.push(Action::Scout(false, true, i));
+            actions.push(Action::Scout(true, false, i));
+            actions.push(Action::Scout(true, true, i));
+        }
     }
 
     // Show actions
@@ -289,8 +291,8 @@ fn get_valid_actions(state: &GameState) -> Vec<Action> {
     let hand = top_only(&player.hand);
     for start in 0..hand.len() {
         for stop in start..hand.len() {
-            if let Some(score) = set_map.get(&hand[start..stop]) {
-                if score > active_set_score {
+            if let Some(score) = set_map.get(&hand[start..stop + 1]) {
+                if *score > *active_set_score {
                     actions.push(Action::Show(start, stop))
                 }
             }
