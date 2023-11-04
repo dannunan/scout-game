@@ -312,6 +312,10 @@ pub fn get_player_action(state: &GameState) -> Option<Action> {
     print_set(&state.active);
     println!("\nPoints: {} Hand:", state.players[0].score);
     print_set(&state.players[0].hand);
+    for i in 0..state.players[0].hand.len() {
+        print!(" {}  ", i)
+    }
+    print!("\n");
     let mut input = String::new();
     println!("\nSelect action:");
     io::stdin()
