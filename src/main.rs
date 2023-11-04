@@ -13,8 +13,14 @@ fn main() {
         scout::get_player_action,
     ];
 
-    if let Err(e) = scout::run(strategies) {
-        println!("Application error: {}", e);
-        process::exit(1);
+    match scout::run(strategies) {
+        Ok(scores) => {
+            println!("Game over! Scores: {:?}", scores);
+            process::exit(0);
+        }
+        Err(e) => {
+            println!("Application error: {}", e);
+            process::exit(1);
+        }
     }
 }
