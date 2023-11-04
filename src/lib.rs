@@ -23,7 +23,7 @@ pub struct Player {
 }
 
 /// Player actions on a given turn.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum Action {
     /// Scouting moves a card from the active set into the hand (it may be flipped)
     /// Specified with (left, flip, insert)
@@ -340,10 +340,24 @@ pub fn get_player_action(state: &GameState) -> Option<Action> {
     }
 }
 
-pub fn strategy_random(state: &GameState) -> Option<Action> {
+pub fn strategy_true_random(state: &GameState) -> Option<Action> {
     let mut actions = get_valid_actions(&state);
     actions.shuffle(&mut thread_rng());
     return actions.pop();
+}
+
+pub fn strategy_show_random(state: &GameState) -> Option<Action> {
+    let mut actions = get_valid_actions(&state);
+    actions.shuffle(&mut thread_rng());
+
+    let show = actions.iter().find(|x| match x {
+        Action::Show(_, _) => true,
+        _ => false,
+    });
+    match show {
+        Some(action) => return Some(*action),
+        None => return actions.pop(),
+    }
 }
 
 pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
