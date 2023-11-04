@@ -311,16 +311,24 @@ pub fn get_player_action(state: &GameState) -> Option<Action> {
     print_set(&state.active);
     println!("\nPoints: {} Hand:", state.players[0].score);
     print_set(&state.players[0].hand);
-    let mut action = String::new();
+    let mut input = String::new();
     println!("\nSelect action:");
     io::stdin()
-        .read_line(&mut action)
+        .read_line(&mut input)
         .expect("Failed to read line");
-    match action.trim() {
-        "Scout" => Some(Action::Scout(true, false, 0)),
-        "Show" => Some(Action::Show(0, 0)),
+    let actions: Vec<&str> = input.trim().split(" ").collect();
+    match actions[0] {
+        "Scout" => Some(Action::Scout(
+            actions[1] == "1",
+            actions[2] == "1",
+            actions[3].parse().unwrap(),
+        )),
+        "Show" => Some(Action::Show(
+            actions[1].parse().unwrap(),
+            actions[2].parse().unwrap(),
+        )),
         "Scout and show" => Some(Action::ScoutShow(true, false, 0, 0, 0)),
-        "Quit" => std::process::exit(0),
+        "Quit" => None,
         _ => {
             println!("Not a valid action! Enter: Scout, Show, Scout and show, or Quit");
             get_player_action(state)
