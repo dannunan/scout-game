@@ -262,6 +262,44 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
     return map;
 }
 
+fn top_only(set: &Set) -> Vec<i32> {
+    let mut vec = Vec::new();
+    for card in set {
+        vec.push(card.0)
+    }
+    return vec;
+}
+
+/// Get all valid Actions for player 0
+fn get_valid_actions(state: &GameState) -> Vec<Action> {
+    let mut actions = Vec::new();
+    let player = &state.players[0];
+
+    // Scout actions
+    for i in 0..player.hand.len() {
+        actions.push(Action::Scout(false, false, i));
+        actions.push(Action::Scout(false, true, i));
+        actions.push(Action::Scout(true, false, i));
+        actions.push(Action::Scout(true, true, i));
+    }
+
+    // Show actions
+    let set_map = generate_set_map(); // TODO: Very inefficient to call every time
+    let active_set_score = set_map.get(&top_only(&state.active)).unwrap_or(&0);
+    let hand = top_only(&player.hand);
+    for start in 0..hand.len() {
+        for stop in start..hand.len() {
+            if let Some(score) = set_map.get(&hand[start..stop]) {
+                if score > active_set_score {
+                    actions.push(Action::Show(start, stop))
+                }
+            }
+        }
+    }
+
+    return actions;
+}
+
 pub fn get_player_action(state: &GameState) -> Action {
     // Print some info
     println!("\nActive Set:");
@@ -283,6 +321,12 @@ pub fn get_player_action(state: &GameState) -> Action {
             get_player_action(state)
         }
     }
+}
+
+pub fn strategy_random(state: &GameState) -> Action {
+    let mut actions = get_valid_actions(state);
+    actions.shuffle(&mut thread_rng());
+    return actions.pop().unwrap();
 }
 
 #[cfg(test)]
