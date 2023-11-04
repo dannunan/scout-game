@@ -51,8 +51,6 @@ pub enum NewGameState {
 
 impl GameState {
     fn new(n: usize, shuffle: bool) -> Self {
-        println!("Creating {} player game", n);
-
         let mut game = GameState {
             active: Set::new(),
             game_size: n,
@@ -60,10 +58,7 @@ impl GameState {
             active_owner: 0,
         };
 
-        let mut deck = create_deck(n, true);
-
-        println!("Using {} card deck", deck.len());
-        if shuffle {}
+        let mut deck = create_deck(n, shuffle);
 
         // Deal out all cards
         let mut player_index = 0;
