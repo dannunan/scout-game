@@ -211,21 +211,21 @@ impl GameState {
         };
 
         // Check if game is over
-        let hand_size = self.players[0].hand.len();
+        let hand_size = state.players[0].hand.len();
         // Round ends if hand is empty
         if hand_size == 0 {
             let mut scores = Vec::new();
-            for i in 1..state.players.len() {
+            for i in 0..state.players.len() {
                 scores.push(state.players[i].score - state.players[i].hand.len() as i32);
             }
             return NewGameState::GameOver(scores);
         // Round ends if active player is next player
-        } else if self.active_owner == 1 {
+        } else if state.active_owner == 1 {
             // The next player isn't penalised for hand size -
             // in this case, offset this players points by hand size
             state.players[1].score += hand_size as i32;
             let mut scores = Vec::new();
-            for i in 1..state.players.len() {
+            for i in 0..state.players.len() {
                 scores.push(state.players[i].score - state.players[i].hand.len() as i32);
             }
             return NewGameState::GameOver(scores);
