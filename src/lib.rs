@@ -90,28 +90,26 @@ fn create_deck(game_size: usize, shuffle: bool) -> Set {
     let mut deck: Set = VecDeque::new();
     match game_size {
         3 => {
-            // Each unique combination of 1-9, excluding matches
-            for bottom in 1..10 {
-                for top in 1..bottom {
+            // Each unique combination of 0-8, excluding matches
+            for bottom in 0..9 {
+                for top in 0..bottom {
                     deck.push_back(Card(top, bottom));
                 }
             }
         }
         4 => {
-            // Each unique combination of 1-10, excluding matches and (10/9)
-            for bottom in 1..10 {
-                for top in 1..bottom {
+            // Each unique combination of 0-9, excluding matches and (9/8)
+            for bottom in 0..10 {
+                for top in 0..bottom {
                     deck.push_back(Card(top, bottom));
                 }
             }
-            for top in 1..9 {
-                deck.push_back(Card(top, 10));
-            }
+            deck.pop_back();
         }
         5 => {
-            // Each unique combination of 1-10, excluding matches
-            for bottom in 1..11 {
-                for top in 1..bottom {
+            // Each unique combination of 0-9, excluding matches
+            for bottom in 0..10 {
+                for top in 0..bottom {
                     deck.push_back(Card(top, bottom));
                 }
             }
@@ -243,7 +241,11 @@ impl GameState {
 
 fn print_set(set: &Set) {
     for card in set {
-        print!(" {}", card)
+        print!("{}  |", card.0)
+    }
+    print!("\n");
+    for card in set {
+        print!("  {}|", card.1)
     }
     print!("\n");
 }
