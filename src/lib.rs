@@ -176,7 +176,7 @@ fn print_set(set: &Set) {
 /// Strategies are ways of generating Actions based on GameState
 pub type Strategy = fn(&GameState) -> Option<Action>;
 
-pub fn run(strategies: Vec<Strategy>) -> Result<Vec<i32>, GameState> {
+pub fn run(strategies: &Vec<Strategy>) -> Result<Vec<i32>, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut turn = 0;
@@ -244,7 +244,7 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
     // This is done by generating the sets in order of their value
 
     let mut map = HashMap::new();
-    let mut i = 0;
+    let mut i = 1;
 
     // For size=1 straights and flushes are identical
     for base in 0..10 {
@@ -357,8 +357,11 @@ mod tests {
     fn test_set_map() {
         let set_map = generate_set_map();
 
+        // Empty or non matching returns None
         assert_eq!(set_map.get(&Vec::new()), None);
-        assert_eq!(set_map.get(&vec![0 as i32]), Some(&0));
+
+        // Minimum set must score 1 (0 is empty set score)
+        assert_eq!(set_map.get(&vec![0 as i32]), Some(&1));
 
         // Larger sets beat smaller sets
         assert!(set_map.get(&vec![1, 1, 1]).unwrap() > set_map.get(&vec![9, 9]).unwrap());
