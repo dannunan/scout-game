@@ -194,7 +194,6 @@ pub fn run(strategies: Vec<Strategy>) -> Result<Vec<i32>, GameState> {
                 };
             }
             None => {
-                println!("No actions returned by strategy!");
                 return Err(game);
             }
         }
