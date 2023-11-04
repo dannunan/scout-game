@@ -10,7 +10,7 @@ fn main() {
         scout::strategy_random,
     ];
 
-    match scout::run(strategies) {
+    match scout::run(&strategies) {
         Ok(scores) => {
             println!("Game over! Scores: {:?}", scores);
             process::exit(0);
