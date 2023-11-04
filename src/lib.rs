@@ -346,6 +346,25 @@ pub fn strategy_random(state: &GameState) -> Option<Action> {
     return actions.pop();
 }
 
+pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
+    let n_strategies = strategies.len();
+    let mut wins = vec![0; n_strategies];
+    for _ in 0..n {
+        match run(&strategies) {
+            Ok(scores) => {
+                let max_score = *scores.iter().max().unwrap();
+                for i in 0..n_strategies {
+                    if scores[i] == max_score {
+                        wins[i] += 1;
+                    }
+                }
+            }
+            Err(_) => {}
+        }
+    }
+    return wins;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
