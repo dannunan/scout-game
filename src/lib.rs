@@ -124,6 +124,11 @@ fn create_deck(game_size: usize, shuffle: bool) -> Set {
     return deck;
 }
 
+pub enum NewGameState {
+    Continue(GameState),
+    GameOver(Vec<i32>),
+}
+
 impl GameState {
     fn new(n: usize, shuffle: bool) -> Self {
         println!("Creating {} player game", n);
@@ -195,30 +200,37 @@ impl GameState {
         }
     }
 
-    fn take_action(&self, action: &Action) -> GameState {
+    fn take_action(&self, action: &Action) -> NewGameState {
+        let mut state: GameState;
         match action {
-            Action::Scout(left, flip, index) => self.scout(*left, *flip, *index),
-            Action::Show(start, stop) => self.show(*start, *stop),
+            Action::Scout(left, flip, index) => state = self.scout(*left, *flip, *index),
+            Action::Show(start, stop) => state = self.show(*start, *stop),
             Action::ScoutShow(left, flip, index, start, stop) => {
-                self.scout(*left, *flip, *index).show(*start, *stop)
+                state = self.scout(*left, *flip, *index).show(*start, *stop)
             }
-        }
-    }
+        };
 
-    fn check_victory(&mut self) -> bool {
-        // TODO: bad inplace mut will be confusing when used as part of a decision tree
-        // Round ends if current player has emptied hand
+        // Check if game is over
         let hand_size = self.players[0].hand.len();
+        // Round ends if hand is empty
         if hand_size == 0 {
-            return true;
+            let mut scores = Vec::new();
+            for i in 1..state.players.len() {
+                scores.push(state.players[i].score - state.players[i].hand.len() as i32);
+            }
+            return NewGameState::GameOver(scores);
         // Round ends if active player is next player
         } else if self.active_owner == 1 {
-            // In this case, offset this players points by hand size
-            // Smelly inplace method!
-            self.players[1].score += hand_size as i32;
-            return true;
+            // The next player isn't penalised for hand size -
+            // in this case, offset this players points by hand size
+            state.players[1].score += hand_size as i32;
+            let mut scores = Vec::new();
+            for i in 1..state.players.len() {
+                scores.push(state.players[i].score - state.players[i].hand.len() as i32);
+            }
+            return NewGameState::GameOver(scores);
         } else {
-            return false;
+            return NewGameState::Continue(state);
         }
     }
 
@@ -269,23 +281,23 @@ pub struct Game {
     strategies: Vec<Strategy>,
 }
 
-pub fn run(strategies: Vec<Strategy>) -> Result<(), Box<dyn Error>> {
+pub fn run(strategies: Vec<Strategy>) -> Result<Vec<i32>, Box<dyn Error>> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut turn = 0;
 
     loop {
         let action = get_player_action(&game);
-        game = game.take_action(&action);
-        if game.check_victory() {
-            println!("Player {} wins!", turn);
-            break;
-        }
+        match game.take_action(&action) {
+            NewGameState::Continue(new) => game = new,
+            NewGameState::GameOver(mut scores) => {
+                scores.rotate_left(turn);
+                return Ok(scores);
+            }
+        };
         game.rotate_left();
         turn = (turn + 1) % n_players;
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
