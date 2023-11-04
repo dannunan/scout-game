@@ -248,22 +248,22 @@ pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
 
     // For size=1 straights and flushes are identical
     for base in 0..10 {
-        i = i + 1;
         map.insert(vec![base], i);
+        i = i + 1;
     }
 
     // Iterate up to max Set size
     for size in 2..10 {
         // First add all straights (ascending and descending)
         for base in 0..10 {
+            map.insert((base..base + size).collect(), i);
+            map.insert((base..base + size).rev().collect(), i);
             i = i + 1;
-            map.insert((base..=size).collect(), i);
-            map.insert((base..=size).rev().collect(), i);
         }
         // Then add all flushes (this is done after to preserve order)
         for base in 0..10 {
+            map.insert(vec![base; size as usize], i);
             i = i + 1;
-            map.insert(vec![base; size.try_into().unwrap()], i);
         }
     }
 
@@ -351,5 +351,23 @@ mod tests {
         assert_eq!(game.players[0].hand.len(), 11);
         let game = GameState::new(5, false);
         assert_eq!(game.players[0].hand.len(), 9);
+    }
+
+    #[test]
+    fn test_set_map() {
+        let set_map = generate_set_map();
+
+        assert_eq!(set_map.get(&Vec::new()), None);
+        assert_eq!(set_map.get(&vec![0 as i32]), Some(&0));
+
+        // Larger sets beat smaller sets
+        assert!(set_map.get(&vec![1, 1, 1]).unwrap() > set_map.get(&vec![9, 9]).unwrap());
+
+        // Flushes beat straights
+        assert!(set_map.get(&vec![1, 1]).unwrap() > set_map.get(&vec![9, 8]).unwrap());
+        assert!(set_map.get(&vec![4, 4, 4]).unwrap() > set_map.get(&vec![1, 2, 3]).unwrap());
+
+        // Ascending == descending
+        assert!(set_map.get(&vec![1, 2, 3]).unwrap() == set_map.get(&vec![3, 2, 1]).unwrap());
     }
 }
