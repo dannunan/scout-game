@@ -23,6 +23,7 @@ pub struct Player {
 }
 
 /// Player actions on a given turn.
+#[derive(PartialEq)]
 pub enum Action {
     /// Scouting moves a card from the active set into the hand (it may be flipped)
     /// Specified with (left, flip, insert)
@@ -316,28 +317,27 @@ pub fn get_player_action(state: &GameState) -> Option<Action> {
     io::stdin()
         .read_line(&mut input)
         .expect("Failed to read line");
-    let actions: Vec<&str> = input.trim().split(" ").collect();
-    match actions[0] {
-        "Scout" => Some(Action::Scout(
-            actions[1] == "1",
-            actions[2] == "1",
-            actions[3].parse().unwrap(),
-        )),
-        "Show" => Some(Action::Show(
-            actions[1].parse().unwrap(),
-            actions[2].parse().unwrap(),
-        )),
-        "Scout and show" => Some(Action::ScoutShow(true, false, 0, 0, 0)),
-        "Quit" => None,
+    let split: Vec<&str> = input.trim().split(" ").collect();
+    let action = match split[0] {
+        "Scout" => Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap()),
+        "Show" => Action::Show(split[1].parse().unwrap(), split[2].parse().unwrap()),
+        "Scout and show" => Action::ScoutShow(true, false, 0, 0, 0),
+        "Quit" => return None,
         _ => {
-            println!("Not a valid action! Enter: Scout, Show, Scout and show, or Quit");
-            get_player_action(state)
+            println!("Input not accepted! Enter: Scout, Show, Scout and show, or Quit");
+            return get_player_action(&state);
         }
+    };
+    if get_valid_actions(&state).contains(&action) {
+        return Some(action);
+    } else {
+        println!("Not a valid action!");
+        return get_player_action(&state);
     }
 }
 
 pub fn strategy_random(state: &GameState) -> Option<Action> {
-    let mut actions = get_valid_actions(state);
+    let mut actions = get_valid_actions(&state);
     actions.shuffle(&mut thread_rng());
     return actions.pop();
 }
