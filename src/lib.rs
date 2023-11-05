@@ -219,7 +219,7 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
                     NewGameState::GameOver(mut scores) => {
-                        scores.rotate_left(turn % n_players);
+                        scores.rotate_right(turn % n_players);
                         return Ok(GameResult { scores, turn });
                     }
                 };
@@ -230,7 +230,7 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
         }
 
         game.rotate_left();
-        turn = turn + 1;
+        turn += 1;
     }
 }
 
