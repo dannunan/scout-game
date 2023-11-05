@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::{HashMap, VecDeque};
-use std::io;
+use std::{fmt, io};
 
 #[derive(Debug, Clone)]
 pub struct Card(i32, i32);
@@ -48,6 +48,38 @@ pub struct GameState {
 pub enum NewGameState {
     Continue(GameState),
     GameOver(Vec<i32>),
+}
+
+impl fmt::Display for Action {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Scout(left, flip, insert) => {
+                write!(f, "Scout l:{}, f:{}, i:{}", left, flip, insert)
+            }
+            Self::Show(start, stop) => {
+                write!(f, "Show {} to {}", start, stop)
+            }
+            Self::ScoutShow(_, _, _, _, _) => {
+                write!(f, "Scout and show!")
+            }
+        }
+    }
+}
+
+impl fmt::Display for Player {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Score: {}, Hand: {:?}", self.score, top_only(&self.hand))
+    }
+}
+
+impl fmt::Display for GameState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut hands: String = "Hands\n".to_owned();
+        for player in &self.players {
+            hands.push_str(&format!("{}\n", player))
+        }
+        write!(f, "{}", hands)
+    }
 }
 
 impl GameState {
@@ -127,20 +159,18 @@ impl GameState {
             }
         };
 
-        // Check if game is over
-        let hand_size = state.players[0].hand.len();
-        // Round ends if hand is empty
-        if hand_size == 0 {
+        // Round ends if current players hand is empty
+        if state.players[0].hand.len() == 0 {
             let mut scores = Vec::new();
             for i in 0..state.players.len() {
                 scores.push(state.players[i].score - state.players[i].hand.len() as i32);
             }
             return NewGameState::GameOver(scores);
-            // Round ends if active player is next player
+            // Round ends if active owner is next player (1)
         } else if state.active_owner == 1 {
-            // The next player isn't penalised for hand size -
-            // in this case, offset this players points by hand size
-            state.players[1].score += hand_size as i32;
+            // The next player isn't penalised for their hand size -
+            // offset this players points by their hand size then count normally
+            state.players[1].score += state.players[1].hand.len() as i32;
             let mut scores = Vec::new();
             for i in 0..state.players.len() {
                 scores.push(state.players[i].score - state.players[i].hand.len() as i32);
@@ -201,6 +231,38 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
 
         game.rotate_left();
         turn = turn + 1;
+    }
+}
+
+pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
+    let n_players = strategies.len();
+    let mut game = GameState::new(n_players, true);
+    let mut turn = 0;
+
+    loop {
+        if turn % n_players == 0 {
+            println!("Turn {}", turn);
+            println!("{}", game);
+        }
+        let action = strategies[turn % n_players](&game);
+        match action {
+            Some(action) => {
+                println!("Player {}: {}", turn % n_players, action);
+                match game.take_action(&action) {
+                    NewGameState::Continue(new) => game = new,
+                    NewGameState::GameOver(mut scores) => {
+                        scores.rotate_right(turn % n_players);
+                        return Ok(GameResult { scores, turn });
+                    }
+                };
+            }
+            None => {
+                return Err(game);
+            }
+        }
+
+        game.rotate_left();
+        turn += 1;
     }
 }
 
