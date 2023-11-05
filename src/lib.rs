@@ -172,7 +172,12 @@ fn print_set(set: &Set) {
 /// Strategies are ways of generating Actions based on GameState
 pub type Strategy = fn(&GameState) -> Option<Action>;
 
-pub fn run(strategies: &Vec<Strategy>) -> Result<Vec<i32>, GameState> {
+pub struct GameResult {
+    pub scores: Vec<i32>,
+    pub turn: usize,
+}
+
+pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut turn = 0;
@@ -184,8 +189,8 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<Vec<i32>, GameState> {
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
                     NewGameState::GameOver(mut scores) => {
-                        scores.rotate_left(turn);
-                        return Ok(scores);
+                        scores.rotate_left(turn % n_players);
+                        return Ok(GameResult { scores, turn });
                     }
                 };
             }
@@ -195,7 +200,7 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<Vec<i32>, GameState> {
         }
 
         game.rotate_left();
-        turn = (turn + 1) % n_players;
+        turn = turn + 1;
     }
 }
 
@@ -365,10 +370,10 @@ pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
     let mut wins = vec![0; n_strategies];
     for _ in 0..n {
         match run(&strategies) {
-            Ok(scores) => {
-                let max_score = *scores.iter().max().unwrap();
+            Ok(game_result) => {
+                let max_score = *game_result.scores.iter().max().unwrap();
                 for i in 0..n_strategies {
-                    if scores[i] == max_score {
+                    if game_result.scores[i] == max_score {
                         wins[i] += 1;
                     }
                 }

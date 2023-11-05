@@ -4,20 +4,24 @@ fn main() {
     println!("Scout!");
 
     let strategies: Vec<scout::Strategy> = vec![
-        scout::get_player_action,
-        scout::strategy_random,
-        scout::strategy_random,
-        scout::strategy_random,
+        scout::strategy_show_random,
+        scout::strategy_true_random,
+        scout::strategy_true_random,
     ];
 
+    println!("{:?}", scout::evaluate_strategies(&strategies, 1000));
+
     match scout::run(&strategies) {
-        Ok(scores) => {
-            println!("Game over! Scores: {:?}", scores);
-            process::exit(0);
+        Ok(game_result) => {
+            println!(
+                "Game over! Turn: {} Scores: {:?}",
+                game_result.turn, game_result.scores
+            );
         }
         Err(game) => {
             println!("Game halted!: {:?}", game);
             process::exit(1);
         }
     }
+    process::exit(0);
 }
