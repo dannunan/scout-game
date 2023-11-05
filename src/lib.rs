@@ -241,7 +241,7 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
 
     loop {
         if turn % n_players == 0 {
-            println!("Turn {}", turn);
+            println!("\nTurn {}", turn);
             println!("{}", game);
         }
         let action = strategies[turn % n_players](&game);
