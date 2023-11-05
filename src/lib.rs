@@ -183,7 +183,7 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let mut turn = 0;
 
     loop {
-        let action = strategies[turn](&game);
+        let action = strategies[turn % n_players](&game);
         match action {
             Some(action) => {
                 match game.take_action(&action) {
