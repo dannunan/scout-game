@@ -427,6 +427,41 @@ pub fn strategy_show_random(state: &GameState) -> Option<Action> {
     }
 }
 
+fn wl_pruning(state: &GameState, actions: &Vec<Action>) -> Vec<Action> {
+    let mut pruned_actions: Vec<Action> = Vec::new();
+    for action in actions {
+        match state.take_action(action) {
+            NewGameState::GameOver(scores) => {
+                // If this action results in win, only return it
+                if scores[0] == *scores.iter().max().unwrap() {
+                    return vec![*action];
+                }
+            }
+            NewGameState::Continue(_) => pruned_actions.push(*action),
+        }
+    }
+    return pruned_actions;
+}
+
+pub fn strategy_show_wl_pruning(state: &GameState) -> Option<Action> {
+    let mut all_actions = get_valid_actions(&state);
+    all_actions.shuffle(&mut thread_rng());
+
+    let mut actions = wl_pruning(&state, &all_actions);
+    if actions.is_empty() {
+        return all_actions.pop();
+    }
+
+    let show = actions.iter().find(|x| match x {
+        Action::Show(_, _) => true,
+        _ => false,
+    });
+    match show {
+        Some(action) => return Some(*action),
+        None => return actions.pop(),
+    }
+}
+
 pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
     let n_strategies = strategies.len();
     let mut wins = vec![0; n_strategies];
