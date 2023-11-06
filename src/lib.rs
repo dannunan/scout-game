@@ -200,7 +200,7 @@ fn print_set(set: &Set) {
 }
 
 /// Strategies are ways of generating Actions based on GameState
-pub type Strategy = fn(&GameState) -> Option<Action>;
+pub type Strategy = fn(&GameState, &SetMap) -> Option<Action>;
 
 pub struct GameResult {
     pub scores: Vec<i32>,
@@ -208,12 +208,13 @@ pub struct GameResult {
 }
 
 pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
+    let set_map = generate_set_map();
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut turn = 0;
 
     loop {
-        let action = strategies[turn % n_players](&game);
+        let action = strategies[turn % n_players](&game, &set_map);
         match action {
             Some(action) => {
                 match game.take_action(&action) {
@@ -235,6 +236,7 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
 }
 
 pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
+    let set_map = generate_set_map();
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut turn = 0;
@@ -244,7 +246,7 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
             println!("\nTurn {}", turn);
             println!("{}", game);
         }
-        let action = strategies[turn % n_players](&game);
+        let action = strategies[turn % n_players](&game, &set_map);
         match action {
             Some(action) => {
                 println!("Player {}: {}", turn % n_players, action);
@@ -302,7 +304,9 @@ fn create_deck(game_size: usize, shuffle: bool) -> Set {
     return deck;
 }
 
-pub fn generate_set_map() -> HashMap<Vec<i32>, i32> {
+type SetMap = HashMap<Vec<i32>, i32>;
+
+fn generate_set_map() -> SetMap {
     // Generate all legal sets, and assign an i32 value to each.
     // This is done by generating the sets in order of their value
 
@@ -342,7 +346,7 @@ fn top_only(set: &Set) -> Vec<i32> {
 }
 
 /// Get all valid Actions for player 0
-fn get_valid_actions(state: &GameState) -> Vec<Action> {
+fn get_valid_actions(state: &GameState, set_map: &SetMap) -> Vec<Action> {
     let mut actions = Vec::new();
     let player = &state.players[0];
 
@@ -357,7 +361,6 @@ fn get_valid_actions(state: &GameState) -> Vec<Action> {
     }
 
     // Show actions
-    let set_map = generate_set_map(); // TODO: Very inefficient to call every time
     let active_set_score = set_map.get(&top_only(&state.active)).unwrap_or(&0);
     let hand = top_only(&player.hand);
     for start in 0..hand.len() {
@@ -373,7 +376,7 @@ fn get_valid_actions(state: &GameState) -> Vec<Action> {
     return actions;
 }
 
-pub fn get_player_action(state: &GameState) -> Option<Action> {
+pub fn get_player_action(state: &GameState, set_map: &SetMap) -> Option<Action> {
     // Print some info
     println!("\nActive Set:");
     print_set(&state.active);
@@ -396,25 +399,25 @@ pub fn get_player_action(state: &GameState) -> Option<Action> {
         "Quit" => return None,
         _ => {
             println!("Input not accepted! Enter: Scout, Show, Scout and show, or Quit");
-            return get_player_action(&state);
+            return get_player_action(&state, set_map);
         }
     };
-    if get_valid_actions(&state).contains(&action) {
+    if get_valid_actions(&state, set_map).contains(&action) {
         return Some(action);
     } else {
         println!("Not a valid action!");
-        return get_player_action(&state);
+        return get_player_action(&state, set_map);
     }
 }
 
-pub fn strategy_true_random(state: &GameState) -> Option<Action> {
-    let mut actions = get_valid_actions(&state);
+pub fn strategy_true_random(state: &GameState, set_map: &SetMap) -> Option<Action> {
+    let mut actions = get_valid_actions(&state, set_map);
     actions.shuffle(&mut thread_rng());
     return actions.pop();
 }
 
-pub fn strategy_show_random(state: &GameState) -> Option<Action> {
-    let mut actions = get_valid_actions(&state);
+pub fn strategy_show_random(state: &GameState, set_map: &SetMap) -> Option<Action> {
+    let mut actions = get_valid_actions(&state, set_map);
     actions.shuffle(&mut thread_rng());
 
     let show = actions.iter().find(|x| match x {
@@ -443,8 +446,8 @@ fn wl_pruning(state: &GameState, actions: &Vec<Action>) -> Vec<Action> {
     return pruned_actions;
 }
 
-pub fn strategy_show_wl_pruning(state: &GameState) -> Option<Action> {
-    let mut all_actions = get_valid_actions(&state);
+pub fn strategy_show_wl_pruning(state: &GameState, set_map: &SetMap) -> Option<Action> {
+    let mut all_actions = get_valid_actions(&state, set_map);
     all_actions.shuffle(&mut thread_rng());
 
     let mut actions = wl_pruning(&state, &all_actions);
@@ -463,7 +466,7 @@ pub fn strategy_show_wl_pruning(state: &GameState) -> Option<Action> {
 }
 
 /// Returns minimum number of show actions required to empty hand
-pub fn turns_to_empty(hand: &Vec<i32>) -> usize {
+pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
     // Iter through start and stops, then call recursively on self.
     // min gives None if iterator is empty (in this case the hand is empty
     (0..hand.len())
@@ -471,7 +474,7 @@ pub fn turns_to_empty(hand: &Vec<i32>) -> usize {
         .map(|range| {
             let mut new_hand = hand.clone();
             new_hand.drain(range);
-            turns_to_empty(&new_hand) + 1
+            turns_to_empty(&new_hand, &set_map) + 1
         })
         .min()
         .unwrap_or(0)
@@ -533,9 +536,11 @@ mod tests {
 
     #[test]
     fn test_turns_to_empty() {
+        let set_map = generate_set_map();
+
         //Trivial cases
-        assert_eq!(turns_to_empty(&vec![]), 0);
-        assert_eq!(turns_to_empty(&vec![0]), 1);
-        assert_eq!(turns_to_empty(&vec![0, 1, 2]), 1);
+        assert_eq!(turns_to_empty(&vec![], &set_map), 0);
+        assert_eq!(turns_to_empty(&vec![0], &set_map), 1);
+        assert_eq!(turns_to_empty(&vec![0, 1, 2], &set_map), 1);
     }
 }
