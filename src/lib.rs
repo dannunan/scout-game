@@ -470,7 +470,7 @@ pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
     // Iter through start and stops, then call recursively on self.
     // min gives None if iterator is empty (in this case the hand is empty
     (0..hand.len())
-        .map(|start| (start..hand.len()))
+        .flat_map(|start| (start..hand.len()).map(move |stop| (start..stop + 1)))
         .map(|range| {
             let mut new_hand = hand.clone();
             let set: Vec<i32> = new_hand.drain(range).collect();
@@ -479,7 +479,7 @@ pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
         .filter(|(set, _)| set_map.contains_key(set))
         .map(|(_, new_hand)| turns_to_empty(&new_hand, &set_map) + 1)
         .min()
-        .unwrap_or(0)
+        .unwrap_or(0) // TODO: Cache!
 }
 
 pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
@@ -548,8 +548,14 @@ mod tests {
         // Fiddly examples
         assert_eq!(turns_to_empty(&vec![0, 1, 0], &set_map), 2);
         assert_eq!(turns_to_empty(&vec![1, 3, 5], &set_map), 3);
-        assert_eq!(turns_to_empty(&vec![1, 3, 1], &set_map), 3);
+        assert_eq!(turns_to_empty(&vec![1, 3, 1], &set_map), 2);
         assert_eq!(turns_to_empty(&vec![1, 3, 3, 1], &set_map), 2);
         assert_eq!(turns_to_empty(&vec![1, 3, 5, 7, 1], &set_map), 4);
+
+        // Big hands
+        assert_eq!(
+            turns_to_empty(&vec![7, 3, 2, 1, 4, 7, 1, 2, 1], &set_map),
+            5
+        );
     }
 }
