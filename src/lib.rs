@@ -352,7 +352,7 @@ fn get_valid_actions(state: &GameState, set_map: &SetMap) -> Vec<Action> {
 
     // Scout actions
     if !state.active.is_empty() {
-        for i in 0..player.hand.len() {
+        for i in 0..player.hand.len() + 1 {
             actions.push(Action::Scout(false, false, i));
             actions.push(Action::Scout(false, true, i));
             actions.push(Action::Scout(true, false, i));
