@@ -462,6 +462,21 @@ pub fn strategy_show_wl_pruning(state: &GameState) -> Option<Action> {
     }
 }
 
+/// Returns minimum number of show actions required to empty hand
+pub fn turns_to_empty(hand: &Vec<i32>) -> usize {
+    // Iter through start and stops, then call recursively on self.
+    // min gives None if iterator is empty (in this case the hand is empty
+    (0..hand.len())
+        .map(|start| start..hand.len())
+        .map(|range| {
+            let mut new_hand = hand.clone();
+            new_hand.drain(range);
+            turns_to_empty(&new_hand) + 1
+        })
+        .min()
+        .unwrap_or(0)
+}
+
 pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
     let n_strategies = strategies.len();
     let mut wins = vec![0; n_strategies];
@@ -514,5 +529,13 @@ mod tests {
 
         // Ascending == descending
         assert!(set_map.get(&vec![1, 2, 3]).unwrap() == set_map.get(&vec![3, 2, 1]).unwrap());
+    }
+
+    #[test]
+    fn test_turns_to_empty() {
+        //Trivial cases
+        assert_eq!(turns_to_empty(&vec![]), 0);
+        assert_eq!(turns_to_empty(&vec![0]), 1);
+        assert_eq!(turns_to_empty(&vec![0, 1, 2]), 1);
     }
 }
