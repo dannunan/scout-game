@@ -45,6 +45,16 @@ pub struct GameState {
     active_owner: usize,
 }
 
+/// GameView for information available to current player,
+/// this is always oriented with current player at position 0
+pub struct GameView {
+    hand: Vec<i32>,
+    active: Set,
+    active_owner: usize,
+    scores: Vec<i32>,
+    hand_sizes: Vec<usize>,
+}
+
 pub enum NewGameState {
     Continue(GameState),
     GameOver(Vec<i32>),
@@ -79,6 +89,26 @@ impl fmt::Display for GameState {
             hands.push_str(&format!("{}\n", player))
         }
         write!(f, "{}", hands)
+    }
+}
+
+impl fmt::Display for GameView {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut string: String = Default::default();
+        string.push_str("\nActive Set:");
+
+        for card in &self.active {
+            string.push_str(&format!("{}  |", card.0))
+        }
+        print!("\n");
+        for card in &self.active {
+            string.push_str(&format!("  {}|", card.1))
+        }
+        print!("\n");
+
+        string.push_str(&format!("\nPoints: {} Hand:", self.scores[0]));
+        string.push_str(&format!("{:?}", self.hand));
+        write!(f, "{}", string)
     }
 }
 
@@ -185,6 +215,18 @@ impl GameState {
         // Maybe combine with check victory to return some kind of Result?
         self.players.rotate_left(1);
         self.active_owner = (self.active_owner + self.game_size - 1) % self.game_size;
+    }
+
+    pub fn as_view(&self, player_index: usize) -> GameView {
+        let mut players = self.players.clone();
+        players.rotate_right(player_index);
+        GameView {
+            hand: top_only(&players[0].hand),
+            active: self.active.clone(),
+            active_owner: (self.active_owner + self.game_size - player_index) % self.game_size,
+            scores: self.players.iter().map(|p| p.score).collect(),
+            hand_sizes: self.players.iter().map(|p| p.hand.len()).collect(),
+        }
     }
 }
 
