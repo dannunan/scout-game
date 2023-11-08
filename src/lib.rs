@@ -43,6 +43,7 @@ pub struct GameState {
     game_size: usize,
     active: Set,
     active_owner: usize,
+    turn: usize,
 }
 
 /// GameView for information available to current player,
@@ -91,7 +92,7 @@ impl fmt::Display for Player {
 
 impl fmt::Display for GameState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut hands: String = "Hands\n".to_owned();
+        let mut hands: String = "Hands:\n".to_owned();
         for player in &self.players {
             hands.push_str(&format!("{}\n", player))
         }
@@ -126,6 +127,7 @@ impl GameState {
             game_size: n,
             players: VecDeque::from(vec![Default::default(); n]),
             active_owner: 0,
+            turn: 0,
         };
 
         let mut deck = create_deck(n, shuffle);
@@ -144,6 +146,7 @@ impl GameState {
         let game_size = self.game_size;
         let mut active = self.active.clone();
         let active_owner = self.active_owner;
+        let turn = self.turn;
 
         let mut card: Card;
         if left {
@@ -154,7 +157,7 @@ impl GameState {
         if flip {
             card = card.flip();
         }
-        players[0].hand.insert(index, card);
+        players[turn].hand.insert(index, card);
         players[active_owner].score += 1;
 
         GameState {
@@ -162,6 +165,7 @@ impl GameState {
             game_size,
             active,
             active_owner,
+            turn,
         }
     }
 
@@ -170,11 +174,12 @@ impl GameState {
         let game_size = self.game_size;
         let mut active = self.active.clone();
         let active_owner = 0;
+        let turn = self.turn;
 
-        players[0].score += active.len() as i32;
+        players[turn].score += active.len() as i32;
         active.clear();
         for _ in start..stop + 1 {
-            active.push_back(players[0].hand.remove(start).unwrap())
+            active.push_back(players[turn].hand.remove(start).unwrap())
         }
 
         GameState {
@@ -182,6 +187,7 @@ impl GameState {
             game_size,
             active,
             active_owner,
+            turn,
         }
     }
 
@@ -197,37 +203,47 @@ impl GameState {
         };
 
         // Round ends if current players hand is empty
-        if state.players[0].hand.len() == 0 {
-            let mut scores = Vec::new();
-            for i in 0..state.players.len() {
-                scores.push(state.players[i].score - state.players[i].hand.len() as i32);
-            }
-            return NewGameState::GameOver(scores);
-            // Round ends if active owner is next player (1)
-        } else if state.active_owner == 1 {
+        if state.players[state.turn].hand.len() == 0 {
+            return NewGameState::GameOver(
+                state
+                    .players
+                    .iter()
+                    .map(|p| p.score - p.hand.len() as i32)
+                    .collect(),
+            );
+        }
+        // Progress turn marker
+        state.turn = (state.turn + 1) % state.game_size;
+
+        // Round ends if active_owner is next player
+        if state.active_owner == state.turn {
             // The next player isn't penalised for their hand size -
             // offset this players points by their hand size then count normally
-            state.players[1].score += state.players[1].hand.len() as i32;
-            let mut scores = Vec::new();
-            for i in 0..state.players.len() {
-                scores.push(state.players[i].score - state.players[i].hand.len() as i32);
-            }
-            return NewGameState::GameOver(scores);
+            state.players[state.turn].score += state.players[state.turn].hand.len() as i32;
+            return NewGameState::GameOver(
+                state
+                    .players
+                    .iter()
+                    .map(|p| p.score - p.hand.len() as i32)
+                    .collect(),
+            );
         } else {
             return NewGameState::Continue(state);
         }
     }
 
-    pub fn as_view(&self, player_index: usize) -> GameView {
+    pub fn as_view(&self) -> GameView {
+        // Shuffle players left
+        // For the View of player 1, player 4 is indexed 3
         let mut players = self.players.clone();
-        players.rotate_right(player_index);
+        players.rotate_left(self.turn);
         GameView {
             hand: top_only(&players[0].hand),
             active: self.active.clone(),
-            active_owner: (self.active_owner + self.game_size - player_index) % self.game_size,
-            scores: self.players.iter().map(|p| p.score).collect(),
-            hand_sizes: self.players.iter().map(|p| p.hand.len()).collect(),
-            scout_show: self.players.iter().map(|p| p.scout_show).collect(),
+            active_owner: (self.active_owner + self.game_size - self.turn) % self.game_size,
+            scores: players.iter().map(|p| p.score).collect(),
+            hand_sizes: players.iter().map(|p| p.hand.len()).collect(),
+            scout_show: players.iter().map(|p| p.scout_show).collect(),
         }
     }
 }
@@ -336,7 +352,7 @@ pub type Strategy = fn(&GameView, &SetMap) -> Option<Action>;
 
 pub struct GameResult {
     pub scores: Vec<i32>,
-    pub turn: usize,
+    pub round: usize,
 }
 
 pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
@@ -347,14 +363,17 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
 
     loop {
         let i = turn % n_players;
-        let action = strategies[i](&game.as_view(i), &set_map);
+        let action = strategies[i](&game.as_view(), &set_map);
         match action {
             Some(action) => {
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
                     NewGameState::GameOver(mut scores) => {
                         scores.rotate_right(turn % n_players);
-                        return Ok(GameResult { scores, turn });
+                        return Ok(GameResult {
+                            scores,
+                            round: turn,
+                        });
                     }
                 };
             }
@@ -370,23 +389,21 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let set_map = generate_set_map();
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
-    let mut turn = 0;
+    let mut round = 0;
 
     loop {
-        let i = turn % n_players;
-        if i == 0 {
-            println!("\nTurn {}", turn);
+        if game.turn == 0 {
+            println!("\nRound {}", round);
             println!("{}", game);
         }
-        let action = strategies[i](&game.as_view(i), &set_map);
+        let action = strategies[game.turn](&game.as_view(), &set_map);
         match action {
             Some(action) => {
-                println!("Player {}: {}", turn % n_players, action);
+                println!("Player {}: {}", &game.turn, action);
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
-                    NewGameState::GameOver(mut scores) => {
-                        scores.rotate_right(turn % n_players);
-                        return Ok(GameResult { scores, turn });
+                    NewGameState::GameOver(scores) => {
+                        return Ok(GameResult { scores, round });
                     }
                 };
             }
@@ -394,7 +411,7 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
                 return Err(game);
             }
         }
-        turn += 1;
+        round += 1;
     }
 }
 
