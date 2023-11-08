@@ -507,7 +507,7 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
 
 pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     // Print some info
-    println!("{}", state.to_string());
+    println!("{}", view.to_string());
 
     print!("\n");
     let mut input = String::new();
