@@ -621,19 +621,36 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
 
 /// Returns minimum number of show actions required to empty hand
 pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
+    let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
+
+    _turns_to_empty(&hand, &set_map, &mut cache)
+}
+
+fn _turns_to_empty(
+    hand: &Vec<i32>,
+    set_map: &SetMap,
+    cache: &mut HashMap<Vec<i32>, usize>,
+) -> usize {
     // Iter through start and stops, then call recursively on self.
     // min gives None if iterator is empty (in this case the hand is empty
-    (0..hand.len())
-        .flat_map(|start| (start..hand.len()).map(move |stop| (start..stop + 1)))
-        .map(|range| {
-            let mut new_hand = hand.clone();
-            let set: Vec<i32> = new_hand.drain(range).collect();
-            (set, new_hand)
-        })
-        .filter(|(set, _)| set_map.contains_key(set))
-        .map(|(_, new_hand)| turns_to_empty(&new_hand, &set_map) + 1)
-        .min()
-        .unwrap_or(0) // TODO: Cache!
+    let turns = match cache.get(hand) {
+        Some(n) => return *n,
+        None => (0..hand.len())
+            .flat_map(|start| (start..hand.len()).map(move |stop| (start..stop + 1)))
+            .map(|range| {
+                let mut new_hand = hand.clone();
+                let set: Vec<i32> = new_hand.drain(range).collect();
+                (set, new_hand)
+            })
+            .filter(|(set, _)| set_map.contains_key(set))
+            .map(|(_, new_hand)| _turns_to_empty(&new_hand, &set_map, cache) + 1)
+            .min()
+            .unwrap_or(0),
+    };
+
+    // Cache!
+    cache.insert(hand.clone(), turns);
+    return turns;
 }
 
 pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
@@ -694,7 +711,7 @@ mod tests {
     fn test_turns_to_empty() {
         let set_map = generate_set_map();
 
-        //Trivial cases
+        // Trivial cases
         assert_eq!(turns_to_empty(&vec![], &set_map), 0);
         assert_eq!(turns_to_empty(&vec![0], &set_map), 1);
         assert_eq!(turns_to_empty(&vec![0, 1, 2], &set_map), 1);
