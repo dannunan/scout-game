@@ -103,16 +103,16 @@ impl fmt::Display for GameState {
 impl fmt::Display for GameView {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut string: String = Default::default();
-        string.push_str("\nActive Set:");
+        string.push_str("\nActive Set:\n");
 
         for card in &self.active {
             string.push_str(&format!("{}  |", card.0))
         }
-        print!("\n");
+        string.push_str("\n");
         for card in &self.active {
             string.push_str(&format!("  {}|", card.1))
         }
-        print!("\n");
+        string.push_str("\n");
 
         string.push_str(&format!("\nPoints: {} Hand:", self.scores[0]));
         string.push_str(&format!("{:?}", self.hand));
@@ -352,28 +352,21 @@ pub type Strategy = fn(&GameView, &SetMap) -> Option<Action>;
 
 pub struct GameResult {
     pub scores: Vec<i32>,
-    pub round: usize,
 }
 
 pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let set_map = generate_set_map();
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
-    let mut turn = 0;
 
     loop {
-        let i = turn % n_players;
-        let action = strategies[i](&game.as_view(), &set_map);
+        let action = strategies[game.turn](&game.as_view(), &set_map);
         match action {
             Some(action) => {
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
-                    NewGameState::GameOver(mut scores) => {
-                        scores.rotate_right(turn % n_players);
-                        return Ok(GameResult {
-                            scores,
-                            round: turn,
-                        });
+                    NewGameState::GameOver(scores) => {
+                        return Ok(GameResult { scores });
                     }
                 };
             }
@@ -381,7 +374,6 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
                 return Err(game);
             }
         }
-        turn += 1;
     }
 }
 
@@ -406,7 +398,7 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
                     NewGameState::GameOver(scores) => {
-                        return Ok(GameResult { scores, round });
+                        return Ok(GameResult { scores });
                     }
                 };
             }
@@ -526,7 +518,7 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
 
 pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     // Print some info
-    println!("{}", view.to_string());
+    println!("{}", view);
 
     print!("\n");
     let mut input = String::new();
