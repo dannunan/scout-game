@@ -53,11 +53,18 @@ pub struct GameView {
     active_owner: usize,
     scores: Vec<i32>,
     hand_sizes: Vec<usize>,
+    scout_show: Vec<bool>,
 }
 
 pub enum NewGameState {
     Continue(GameState),
     GameOver(Vec<i32>),
+}
+
+pub enum NewGameView {
+    Continue(GameView),
+    Win,
+    Loss,
 }
 
 impl fmt::Display for Action {
@@ -226,6 +233,106 @@ impl GameState {
             active_owner: (self.active_owner + self.game_size - player_index) % self.game_size,
             scores: self.players.iter().map(|p| p.score).collect(),
             hand_sizes: self.players.iter().map(|p| p.hand.len()).collect(),
+            scout_show: self.players.iter().map(|p| p.scout_show).collect(),
+        }
+    }
+}
+
+impl GameView {
+    fn scout(&self, left: bool, flip: bool, index: usize) -> GameView {
+        let mut hand = self.hand.clone();
+        let mut active = self.active.clone();
+        let active_owner = self.active_owner;
+        let mut scores = self.scores;
+        let mut hand_sizes = self.hand_sizes.clone();
+        let scout_show = self.scout_show;
+
+        let card: Card;
+        if left {
+            card = active.pop_front().unwrap();
+        } else {
+            card = active.pop_back().unwrap();
+        }
+        if flip {
+            hand.insert(index, card.1);
+        } else {
+            hand.insert(index, card.0);
+        }
+        hand_sizes[0] += 1;
+        self.scores[active_owner] += 1;
+
+        GameView {
+            hand,
+            active,
+            active_owner,
+            scores,
+            hand_sizes,
+            scout_show,
+        }
+    }
+
+    fn show(&self, start: usize, stop: usize) -> GameView {
+        let mut hand = self.hand.clone();
+        let mut active = self.active.clone();
+        let active_owner = 0;
+        let mut scores = self.scores;
+        let mut hand_sizes = self.hand_sizes.clone();
+        let scout_show = self.scout_show;
+
+        scores[0] += active.len() as i32;
+        active.clear();
+        for _ in start..stop + 1 {
+            active.push_back(Card(hand.remove(start), 0))
+        }
+
+        GameView {
+            hand,
+            active,
+            active_owner,
+            scores,
+            hand_sizes,
+            scout_show,
+        }
+    }
+
+    fn take_action(&self, action: &Action) -> NewGameView {
+        let mut view: GameView;
+        match action {
+            Action::Scout(left, flip, index) => view = self.scout(*left, *flip, *index),
+            Action::Show(start, stop) => view = self.show(*start, *stop),
+            Action::ScoutShow(left, flip, index, start, stop) => {
+                view = self.scout(*left, *flip, *index).show(*start, *stop);
+                view.scout_show[0] = false;
+            }
+        };
+
+        // Round ends if current players hand is empty
+        if view.hand.len() == 0 {
+            let mut final_scores = Vec::new();
+            for i in 0..view.scores.len() {
+                final_scores.push(view.scores[i] - view.hand_sizes[i] as i32);
+            }
+            if final_scores[0] == *final_scores.iter().max().unwrap() {
+                return NewGameView::Win;
+            } else {
+                return NewGameView::Loss;
+            };
+        // Round ends if active owner is next player (1)
+        } else if view.active_owner == 1 {
+            // The next player isn't penalised for their hand size -
+            // offset this players points by their hand size then count normally
+            view.scores[0] += view.hand.len() as i32;
+            let mut final_scores = Vec::new();
+            for i in 0..view.scores.len() {
+                final_scores.push(view.scores[i] - view.hand_sizes[i] as i32);
+            }
+            if final_scores[0] == *final_scores.iter().max().unwrap() {
+                return NewGameView::Win;
+            } else {
+                return NewGameView::Loss;
+            };
+        } else {
+            return NewGameView::Continue(view);
         }
     }
 }
@@ -242,7 +349,7 @@ fn print_set(set: &Set) {
 }
 
 /// Strategies are ways of generating Actions based on GameState
-pub type Strategy = fn(&GameState, &SetMap) -> Option<Action>;
+pub type Strategy = fn(&GameView, &SetMap) -> Option<Action>;
 
 pub struct GameResult {
     pub scores: Vec<i32>,
@@ -256,7 +363,8 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let mut turn = 0;
 
     loop {
-        let action = strategies[turn % n_players](&game, &set_map);
+        let i = turn % n_players;
+        let action = strategies[i](&game.as_view(i), &set_map);
         match action {
             Some(action) => {
                 match game.take_action(&action) {
@@ -271,8 +379,6 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
                 return Err(game);
             }
         }
-
-        game.rotate_left();
         turn += 1;
     }
 }
@@ -284,11 +390,12 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let mut turn = 0;
 
     loop {
-        if turn % n_players == 0 {
+        let i = turn % n_players;
+        if i == 0 {
             println!("\nTurn {}", turn);
             println!("{}", game);
         }
-        let action = strategies[turn % n_players](&game, &set_map);
+        let action = strategies[i](&game.as_view(i), &set_map);
         match action {
             Some(action) => {
                 println!("Player {}: {}", turn % n_players, action);
@@ -304,8 +411,6 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
                 return Err(game);
             }
         }
-
-        game.rotate_left();
         turn += 1;
     }
 }
@@ -388,13 +493,12 @@ fn top_only(set: &Set) -> Vec<i32> {
 }
 
 /// Get all valid Actions for player 0
-fn get_valid_actions(state: &GameState, set_map: &SetMap) -> Vec<Action> {
+fn get_valid_actions(state: &GameView, set_map: &SetMap) -> Vec<Action> {
     let mut actions = Vec::new();
-    let player = &state.players[0];
 
     // Scout actions
     if !state.active.is_empty() {
-        for i in 0..player.hand.len() + 1 {
+        for i in 0..state.hand.len() + 1 {
             actions.push(Action::Scout(false, false, i));
             actions.push(Action::Scout(false, true, i));
             actions.push(Action::Scout(true, false, i));
@@ -404,7 +508,7 @@ fn get_valid_actions(state: &GameState, set_map: &SetMap) -> Vec<Action> {
 
     // Show actions
     let active_set_score = set_map.get(&top_only(&state.active)).unwrap_or(&0);
-    let hand = top_only(&player.hand);
+    let hand = state.hand;
     for start in 0..hand.len() {
         for stop in start..hand.len() {
             if let Some(score) = set_map.get(&hand[start..stop + 1]) {
@@ -418,15 +522,10 @@ fn get_valid_actions(state: &GameState, set_map: &SetMap) -> Vec<Action> {
     return actions;
 }
 
-pub fn get_player_action(state: &GameState, set_map: &SetMap) -> Option<Action> {
+pub fn get_player_action(state: &GameView, set_map: &SetMap) -> Option<Action> {
     // Print some info
-    println!("\nActive Set:");
-    print_set(&state.active);
-    println!("\nPoints: {} Hand:", state.players[0].score);
-    print_set(&state.players[0].hand);
-    for i in 0..state.players[0].hand.len() {
-        print!(" {}  ", i)
-    }
+    println!("{}", state.to_string());
+
     print!("\n");
     let mut input = String::new();
     println!("\nSelect action:");
@@ -452,13 +551,13 @@ pub fn get_player_action(state: &GameState, set_map: &SetMap) -> Option<Action> 
     }
 }
 
-pub fn strategy_true_random(state: &GameState, set_map: &SetMap) -> Option<Action> {
+pub fn strategy_true_random(state: &GameView, set_map: &SetMap) -> Option<Action> {
     let mut actions = get_valid_actions(&state, set_map);
     actions.shuffle(&mut thread_rng());
     return actions.pop();
 }
 
-pub fn strategy_show_random(state: &GameState, set_map: &SetMap) -> Option<Action> {
+pub fn strategy_show_random(state: &GameView, set_map: &SetMap) -> Option<Action> {
     let mut actions = get_valid_actions(&state, set_map);
     actions.shuffle(&mut thread_rng());
 
@@ -472,7 +571,7 @@ pub fn strategy_show_random(state: &GameState, set_map: &SetMap) -> Option<Actio
     }
 }
 
-fn wl_pruning(state: &GameState, actions: &Vec<Action>) -> Vec<Action> {
+fn wl_pruning(state: &GameView, actions: &Vec<Action>) -> Vec<Action> {
     let mut pruned_actions: Vec<Action> = Vec::new();
     for action in actions {
         match state.take_action(action) {
@@ -488,7 +587,7 @@ fn wl_pruning(state: &GameState, actions: &Vec<Action>) -> Vec<Action> {
     return pruned_actions;
 }
 
-pub fn strategy_show_wl_pruning(state: &GameState, set_map: &SetMap) -> Option<Action> {
+pub fn strategy_show_wl_pruning(state: &GameView, set_map: &SetMap) -> Option<Action> {
     let mut all_actions = get_valid_actions(&state, set_map);
     all_actions.shuffle(&mut thread_rng());
 
