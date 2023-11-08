@@ -173,7 +173,7 @@ impl GameState {
         let mut players = self.players.clone();
         let game_size = self.game_size;
         let mut active = self.active.clone();
-        let active_owner = 0;
+        let active_owner = self.turn;
         let turn = self.turn;
 
         players[turn].score += active.len() as i32;
@@ -395,7 +395,10 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
         if game.turn == 0 {
             println!("\nRound {}", round);
             println!("{}", game);
+            round += 1;
         }
+
+        // Get action using strategy
         let action = strategies[game.turn](&game.as_view(), &set_map);
         match action {
             Some(action) => {
@@ -411,7 +414,6 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
                 return Err(game);
             }
         }
-        round += 1;
     }
 }
 
