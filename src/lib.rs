@@ -607,6 +607,18 @@ pub fn strategy_show_wl_pruning(view: &GameView, set_map: &SetMap) -> Option<Act
     }
 }
 
+pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
+    let mut actions = get_valid_actions(&view, set_map);
+    actions.shuffle(&mut thread_rng());
+
+    actions.sort_by_key(|action| match view.take_action(action) {
+        NewGameView::Continue(new) => turns_to_empty(&new.hand, &set_map),
+        NewGameView::Win => 0,
+        NewGameView::Loss => 32,
+    });
+    return Some(actions[0]);
+}
+
 /// Returns minimum number of show actions required to empty hand
 pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
     // Iter through start and stops, then call recursively on self.
