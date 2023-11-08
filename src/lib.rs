@@ -218,12 +218,6 @@ impl GameState {
         }
     }
 
-    fn rotate_left(&mut self) {
-        // Maybe combine with check victory to return some kind of Result?
-        self.players.rotate_left(1);
-        self.active_owner = (self.active_owner + self.game_size - 1) % self.game_size;
-    }
-
     pub fn as_view(&self, player_index: usize) -> GameView {
         let mut players = self.players.clone();
         players.rotate_right(player_index);
@@ -243,9 +237,9 @@ impl GameView {
         let mut hand = self.hand.clone();
         let mut active = self.active.clone();
         let active_owner = self.active_owner;
-        let mut scores = self.scores;
+        let mut scores = self.scores.clone();
         let mut hand_sizes = self.hand_sizes.clone();
-        let scout_show = self.scout_show;
+        let scout_show = self.scout_show.clone();
 
         let card: Card;
         if left {
@@ -259,7 +253,7 @@ impl GameView {
             hand.insert(index, card.0);
         }
         hand_sizes[0] += 1;
-        self.scores[active_owner] += 1;
+        scores[active_owner] += 1;
 
         GameView {
             hand,
@@ -275,9 +269,9 @@ impl GameView {
         let mut hand = self.hand.clone();
         let mut active = self.active.clone();
         let active_owner = 0;
-        let mut scores = self.scores;
-        let mut hand_sizes = self.hand_sizes.clone();
-        let scout_show = self.scout_show;
+        let mut scores = self.scores.clone();
+        let hand_sizes = self.hand_sizes.clone();
+        let scout_show = self.scout_show.clone();
 
         scores[0] += active.len() as i32;
         active.clear();
@@ -335,17 +329,6 @@ impl GameView {
             return NewGameView::Continue(view);
         }
     }
-}
-
-fn print_set(set: &Set) {
-    for card in set {
-        print!("{}  |", card.0)
-    }
-    print!("\n");
-    for card in set {
-        print!("  {}|", card.1)
-    }
-    print!("\n");
 }
 
 /// Strategies are ways of generating Actions based on GameState
@@ -493,12 +476,12 @@ fn top_only(set: &Set) -> Vec<i32> {
 }
 
 /// Get all valid Actions for player 0
-fn get_valid_actions(state: &GameView, set_map: &SetMap) -> Vec<Action> {
+fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     let mut actions = Vec::new();
 
     // Scout actions
-    if !state.active.is_empty() {
-        for i in 0..state.hand.len() + 1 {
+    if !view.active.is_empty() {
+        for i in 0..view.hand.len() + 1 {
             actions.push(Action::Scout(false, false, i));
             actions.push(Action::Scout(false, true, i));
             actions.push(Action::Scout(true, false, i));
@@ -507,8 +490,8 @@ fn get_valid_actions(state: &GameView, set_map: &SetMap) -> Vec<Action> {
     }
 
     // Show actions
-    let active_set_score = set_map.get(&top_only(&state.active)).unwrap_or(&0);
-    let hand = state.hand;
+    let active_set_score = set_map.get(&top_only(&view.active)).unwrap_or(&0);
+    let hand = &view.hand;
     for start in 0..hand.len() {
         for stop in start..hand.len() {
             if let Some(score) = set_map.get(&hand[start..stop + 1]) {
@@ -522,7 +505,7 @@ fn get_valid_actions(state: &GameView, set_map: &SetMap) -> Vec<Action> {
     return actions;
 }
 
-pub fn get_player_action(state: &GameView, set_map: &SetMap) -> Option<Action> {
+pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     // Print some info
     println!("{}", state.to_string());
 
@@ -540,25 +523,25 @@ pub fn get_player_action(state: &GameView, set_map: &SetMap) -> Option<Action> {
         "Quit" => return None,
         _ => {
             println!("Input not accepted! Enter: Scout, Show, Scout and show, or Quit");
-            return get_player_action(&state, set_map);
+            return get_player_action(&view, set_map);
         }
     };
-    if get_valid_actions(&state, set_map).contains(&action) {
+    if get_valid_actions(&view, set_map).contains(&action) {
         return Some(action);
     } else {
         println!("Not a valid action!");
-        return get_player_action(&state, set_map);
+        return get_player_action(&view, set_map);
     }
 }
 
-pub fn strategy_true_random(state: &GameView, set_map: &SetMap) -> Option<Action> {
-    let mut actions = get_valid_actions(&state, set_map);
+pub fn strategy_true_random(view: &GameView, set_map: &SetMap) -> Option<Action> {
+    let mut actions = get_valid_actions(&view, set_map);
     actions.shuffle(&mut thread_rng());
     return actions.pop();
 }
 
-pub fn strategy_show_random(state: &GameView, set_map: &SetMap) -> Option<Action> {
-    let mut actions = get_valid_actions(&state, set_map);
+pub fn strategy_show_random(view: &GameView, set_map: &SetMap) -> Option<Action> {
+    let mut actions = get_valid_actions(&view, set_map);
     actions.shuffle(&mut thread_rng());
 
     let show = actions.iter().find(|x| match x {
@@ -571,27 +554,26 @@ pub fn strategy_show_random(state: &GameView, set_map: &SetMap) -> Option<Action
     }
 }
 
-fn wl_pruning(state: &GameView, actions: &Vec<Action>) -> Vec<Action> {
+fn wl_pruning(view: &GameView, actions: &Vec<Action>) -> Vec<Action> {
     let mut pruned_actions: Vec<Action> = Vec::new();
     for action in actions {
-        match state.take_action(action) {
-            NewGameState::GameOver(scores) => {
-                // If this action results in win, only return it
-                if scores[0] == *scores.iter().max().unwrap() {
-                    return vec![*action];
-                }
+        match view.take_action(action) {
+            NewGameView::Continue(_) => pruned_actions.push(*action),
+            NewGameView::Win => {
+                // If this action results in win, return it
+                return vec![*action];
             }
-            NewGameState::Continue(_) => pruned_actions.push(*action),
+            NewGameView::Loss => continue,
         }
     }
     return pruned_actions;
 }
 
-pub fn strategy_show_wl_pruning(state: &GameView, set_map: &SetMap) -> Option<Action> {
-    let mut all_actions = get_valid_actions(&state, set_map);
+pub fn strategy_show_wl_pruning(view: &GameView, set_map: &SetMap) -> Option<Action> {
+    let mut all_actions = get_valid_actions(&view, set_map);
     all_actions.shuffle(&mut thread_rng());
 
-    let mut actions = wl_pruning(&state, &all_actions);
+    let mut actions = wl_pruning(&view, &all_actions);
     if actions.is_empty() {
         return all_actions.pop();
     }
