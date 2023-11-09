@@ -520,6 +520,8 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
 pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     // Print some info
     println!("{}", view);
+    let indexes: Vec<usize> = (0..view.hand.len()).collect();
+    println!("       Indexes:{:?}", indexes);
 
     print!("\n");
     let mut input = String::new();
@@ -605,7 +607,7 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
     actions.shuffle(&mut thread_rng());
 
     actions.sort_by_key(|action| match view.take_action(action) {
-        NewGameView::Continue(new) => turns_to_empty(&new.hand, &set_map),
+        NewGameView::Continue(new) => turns_to_empty(&new.hand, &set_map) + 1,
         NewGameView::Win => 0,
         NewGameView::Loss => 32,
     });
@@ -615,6 +617,7 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
 /// Returns minimum number of show actions required to empty hand
 pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
     let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
+    cache.insert(Vec::default(), 0);
 
     _turns_to_empty(&hand, &set_map, &mut cache)
 }
@@ -626,6 +629,11 @@ fn _turns_to_empty(
 ) -> usize {
     // Iter through start and stops, then call recursively on self.
     // min gives None if iterator is empty (in this case the hand is empty
+
+    if hand.len() == 1 {
+        return 1;
+    }
+
     let turns = match cache.get(hand) {
         Some(n) => return *n,
         None => (0..hand.len())
