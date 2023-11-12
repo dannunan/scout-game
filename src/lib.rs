@@ -4,6 +4,8 @@ use std::collections::{HashMap, VecDeque};
 use std::{fmt, io};
 
 #[derive(Debug, Clone)]
+/// A card, this stores two values, however only the first is "active".
+/// Implements `flip()`, a convenience method which simply flips the two values.
 pub struct Card(i32, i32);
 
 impl Card {
@@ -12,9 +14,10 @@ impl Card {
     }
 }
 
+/// A set of cards. This can represent a hand or a set.
 type Set = VecDeque<Card>;
 
-/// Each player has a hand, some points, and their "Scout show" move.
+/// Each player has a hand, score, and their "Scout show" move.
 #[derive(Debug, Default, Clone)]
 pub struct Player {
     hand: Set,
@@ -22,7 +25,8 @@ pub struct Player {
     scout_show: bool,
 }
 
-/// Player actions on a given turn.
+/// Player actions. These are Scout, Show and ScoutShow, which each take
+/// different parameters.
 #[derive(PartialEq, Clone, Copy)]
 pub enum Action {
     /// Scouting moves a card from the active set into the hand (it may be flipped)
@@ -36,7 +40,10 @@ pub enum Action {
     ScoutShow(bool, bool, usize, usize, usize),
 }
 
-/// GameState for storing state and generating new state with Actions
+/// Stores information about the whole game.
+/// This implements game logic to process actions and check scores.
+/// It is also responsible for generating `GameView` objects from the perspective of
+/// the current player (`self.turn`)
 #[derive(Debug, Default)]
 pub struct GameState {
     players: VecDeque<Player>,
@@ -46,8 +53,11 @@ pub struct GameState {
     turn: usize,
 }
 
-/// GameView for information available to current player,
-/// this is always oriented with current player at position 0
+/// View from perspective of single player. This is rotated, so vectors such as
+/// `score` may not align with the "true" indexes in `GameState`
+///
+/// e.g. a `GameView` from the perspective of player 2 will store player 2's data in
+/// index 0, and player 3's data in index 1.
 pub struct GameView {
     hand: Vec<i32>,
     active: Set,
@@ -232,7 +242,7 @@ impl GameState {
         }
     }
 
-    pub fn as_view(&self) -> GameView {
+    fn as_view(&self) -> GameView {
         // Shuffle players left
         // For the View of player 1, player 4 is indexed 3
         let mut players = self.players.clone();
@@ -347,13 +357,21 @@ impl GameView {
     }
 }
 
-/// Strategies are ways of generating Actions based on GameState
+/// Strategies are functions which generate an `Action` based on a `GameView`.
+/// These can include user input, but are mostly computer players.
+/// Returning `None` will halt the current game.
+/// `SetMap` is a HashMap of set values - this is static for the duration of a game.
 pub type Strategy = fn(&GameView, &SetMap) -> Option<Action>;
 
 pub struct GameResult {
     pub scores: Vec<i32>,
 }
 
+/// Run a single game of Scout. The length of `strategies` determines the number of players, and the
+/// `Strategy` function each player uses.
+///
+/// Returns `GameResult` object containing final scores,
+/// or in the case of runtime error, the `GameState` which lead to the error.
 pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let set_map = generate_set_map();
     let n_players = strategies.len();
@@ -377,6 +395,13 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     }
 }
 
+/// Watch a single game of Scout. The length of `strategies` determines the number of players, and the
+/// `Strategy` function each player uses.
+///
+/// Returns `GameResult` object containing final scores,
+/// or in the case of runtime error, the `GameState` which lead to the error.
+///
+/// This function copies `scout::run` but has more side-effects, primarily for debugging.
 pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let set_map = generate_set_map();
     let n_players = strategies.len();
@@ -446,6 +471,8 @@ fn create_deck(game_size: usize, shuffle: bool) -> Set {
     return deck;
 }
 
+/// To efficiently compare the value of sets, this hashmap is created. In practice this HashMap
+/// is const, however due to const limitations this currently is created by `scout::run`.
 type SetMap = HashMap<Vec<i32>, i32>;
 
 fn generate_set_map() -> SetMap {
@@ -487,7 +514,13 @@ fn top_only(set: &Set) -> Vec<i32> {
     return vec;
 }
 
-/// Get all valid Actions for player 0
+/// Return all valid Actions for `view`. For a large hand this will include approximately:
+/// - 40 Scout actions
+/// - 20 Show actions
+/// - 600 ScoutShow actions
+///
+/// These numbers decrease rapidly as the game progresses - particularly once the ScoutShow action
+/// is used for the round.
 fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     let mut actions = Vec::new();
 
@@ -517,6 +550,25 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     return actions;
 }
 
+/// Strategy which requests user for input
+/// When prompted for an action, enter one of the following actions:
+/// - `scout [left] [flip] [index]`
+/// - `show [start] [stop]`
+/// - `scoutshow [left] [flip] [index]`
+/// - `quit`
+///
+/// All arguments should be numeric (1 representing `true`).
+///
+/// The **scout** action has arguments: `left` for which side of the active set to scout,
+/// `flip` if the card is to be flipped, and the `index` to insert the card at.
+///
+/// The **show** action has arguments `start` and `stop`, which are the inclusive bounds of
+/// the set to show. A single card can be played by repeating e.g. `show 2 2`.
+///
+/// The final action, **scoutshow**, is simply the above actions combined. You should first
+/// enter arguments for the scout step, then you will be presented with a new view and can input a show action.
+///
+/// Entering **quit** will cause the game to halt. This will print a debug view of the `GameState` before exiting.
 pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     // Print some info
     println!("{}", view);
@@ -614,7 +666,9 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
     return Some(actions[0]);
 }
 
-/// Returns minimum number of show actions required to empty hand
+/// Returns minimum number of show actions required to empty hand.
+/// This iterates through all possible sets, checks validity against `set_map`,
+/// then evaluates remaining hand recursively.
 pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
     let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
     cache.insert(Vec::default(), 0);
@@ -627,9 +681,6 @@ fn _turns_to_empty(
     set_map: &SetMap,
     cache: &mut HashMap<Vec<i32>, usize>,
 ) -> usize {
-    // Iter through start and stops, then call recursively on self.
-    // min gives None if iterator is empty (in this case the hand is empty
-
     if hand.len() == 1 {
         return 1;
     }
@@ -654,6 +705,10 @@ fn _turns_to_empty(
     return turns;
 }
 
+/// Convenience function for bulk running `n` games.
+///
+/// Returns number of wins for each strategy.
+/// Drawing for 1st place counts as a win, so the total may exceed the number of games.
 pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
     let n_strategies = strategies.len();
     let mut wins = vec![0; n_strategies];
