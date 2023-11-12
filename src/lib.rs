@@ -244,7 +244,7 @@ impl GameState {
 
     fn as_view(&self) -> GameView {
         // Shuffle players left
-        // For the View of player 1, player 4 is indexed 3
+        // For the view of player 1, player 4 is indexed 3
         let mut players = self.players.clone();
         players.rotate_left(self.turn);
         GameView {
@@ -341,7 +341,7 @@ impl GameView {
         } else if view.active_owner == 1 {
             // The next player isn't penalised for their hand size -
             // offset this players points by their hand size then count normally
-            view.scores[0] += view.hand.len() as i32;
+            view.scores[1] += view.hand.len() as i32;
             let mut final_scores = Vec::new();
             for i in 0..view.scores.len() {
                 final_scores.push(view.scores[i] - view.hand_sizes[i] as i32);
@@ -657,7 +657,7 @@ fn _turns_to_empty(
             .filter(|(set, _)| set_map.contains_key(set))
             .map(|(_, new_hand)| _turns_to_empty(&new_hand, &set_map, cache) + 1)
             .min()
-            .unwrap_or(0),
+            .unwrap(),
     };
 
     // Cache!
