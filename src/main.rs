@@ -13,10 +13,7 @@ fn main() {
 
     match scout::watch(&strategies) {
         Ok(game_result) => {
-            println!(
-                "Game over! Turn: {} Scores: {:?}",
-                game_result.round, game_result.scores
-            );
+            println!("Game over! Scores: {:?}", game_result.scores);
         }
         Err(game) => {
             println!("Game halted!: {:?}", game);
