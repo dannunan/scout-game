@@ -531,12 +531,12 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
         .expect("Failed to read line");
     let split: Vec<&str> = input.trim().split(" ").collect();
     let action = match split[0] {
-        "Scout" => Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap()),
-        "Show" => Action::Show(split[1].parse().unwrap(), split[2].parse().unwrap()),
-        "Scout and show" => Action::ScoutShow(true, false, 0, 0, 0),
-        "Quit" => return None,
+        "scout" => Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap()),
+        "show" => Action::Show(split[1].parse().unwrap(), split[2].parse().unwrap()),
+        "scoutshow" => Action::ScoutShow(true, false, 0, 0, 0),
+        "quit" => return None,
         _ => {
-            println!("Input not accepted! Enter: Scout, Show, Scout and show, or Quit");
+            println!("Input not accepted! Enter: scout, show, scoutshow, or quit");
             return get_player_action(&view, set_map);
         }
     };
