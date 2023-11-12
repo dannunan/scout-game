@@ -4,9 +4,10 @@ fn main() {
     println!("Scout!");
 
     let strategies: Vec<scout::Strategy> = vec![
-        scout::strategy_true_random,
-        scout::strategy_true_random,
-        scout::strategy_true_random,
+        scout::strategy_rush,
+        scout::strategy_rush,
+        scout::strategy_rush,
+        scout::strategy_rush,
     ];
 
     // println!("{:?}", scout::evaluate_strategies(&strategies, 1000));

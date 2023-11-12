@@ -67,12 +67,12 @@ pub struct GameView {
     scout_show: Vec<bool>,
 }
 
-pub enum NewGameState {
+enum NewGameState {
     Continue(GameState),
     GameOver(Vec<i32>),
 }
 
-pub enum NewGameView {
+enum NewGameView {
     Continue(GameView),
     Win,
     Loss,
@@ -600,49 +600,9 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     }
 }
 
-pub fn strategy_true_random(view: &GameView, set_map: &SetMap) -> Option<Action> {
-    let mut actions = get_valid_actions(&view, set_map);
-    actions.shuffle(&mut thread_rng());
-    return actions.pop();
-}
-
 pub fn strategy_show_random(view: &GameView, set_map: &SetMap) -> Option<Action> {
     let mut actions = get_valid_actions(&view, set_map);
     actions.shuffle(&mut thread_rng());
-
-    let show = actions.iter().find(|x| match x {
-        Action::Show(_, _) => true,
-        _ => false,
-    });
-    match show {
-        Some(action) => return Some(*action),
-        None => return actions.pop(),
-    }
-}
-
-fn wl_pruning(view: &GameView, actions: &Vec<Action>) -> Vec<Action> {
-    let mut pruned_actions: Vec<Action> = Vec::new();
-    for action in actions {
-        match view.take_action(action) {
-            NewGameView::Continue(_) => pruned_actions.push(*action),
-            NewGameView::Win => {
-                // If this action results in win, return it
-                return vec![*action];
-            }
-            NewGameView::Loss => continue,
-        }
-    }
-    return pruned_actions;
-}
-
-pub fn strategy_show_wl_pruning(view: &GameView, set_map: &SetMap) -> Option<Action> {
-    let mut all_actions = get_valid_actions(&view, set_map);
-    all_actions.shuffle(&mut thread_rng());
-
-    let mut actions = wl_pruning(&view, &all_actions);
-    if actions.is_empty() {
-        return all_actions.pop();
-    }
 
     let show = actions.iter().find(|x| match x {
         Action::Show(_, _) => true,
@@ -669,7 +629,7 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
 /// Returns minimum number of show actions required to empty hand.
 /// This iterates through all possible sets, checks validity against `set_map`,
 /// then evaluates remaining hand recursively.
-pub fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
+fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
     let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
     cache.insert(Vec::default(), 0);
 
