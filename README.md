@@ -28,7 +28,7 @@ The final action, **scoutshow**, is simply the above actions combined. You shoul
 Entering **quit** will cause the game to halt. This will print a debug view of the `GameState` before exiting.
 
 ## Library
-The primary reason for importing to your own scrip would be to implement custom `Strategy` functions, to play against them or test them against the built-in computer players.
+The primary reason for importing to a script would be to implement custom `Strategy` functions, to play against them or test them against the built-in computer players.
 
 To create a game instance, pass a vector of strategy functions to `scout::run`. You can add a human player with the `get_player_action` strategy. The number of strategies determines the number of players, which must be between 3 and 5.
 
