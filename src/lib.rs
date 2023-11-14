@@ -641,7 +641,7 @@ fn _turns_to_empty(
     set_map: &SetMap,
     cache: &mut HashMap<Vec<i32>, usize>,
 ) -> usize {
-    if hand.len() == 1 {
+    if set_map.contains_key(hand) {
         return 1;
     }
 
@@ -655,7 +655,15 @@ fn _turns_to_empty(
                 (set, new_hand)
             })
             .filter(|(set, _)| set_map.contains_key(set))
-            .map(|(_, new_hand)| _turns_to_empty(&new_hand, &set_map, cache) + 1)
+            .map(
+                |(_, new_hand)| match _turns_to_empty(&new_hand, &set_map, cache) {
+                    1 => {
+                        cache.insert(hand.clone(), 2);
+                        return 2; // Return early
+                    }
+                    x => x + 1,
+                },
+            )
             .min()
             .unwrap(),
     };
