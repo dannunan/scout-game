@@ -222,7 +222,7 @@ impl GameState {
             Action::Show(start, stop) => state = self.show(*start, *stop),
             Action::ScoutShow(left, flip, index, start, stop) => {
                 state = self.scout(*left, *flip, *index).show(*start, *stop);
-                state.players[0].scout_show = false;
+                state.players[self.turn].scout_show = false;
             }
         };
 
