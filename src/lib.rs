@@ -618,8 +618,10 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
     let mut actions = get_valid_actions(&view, set_map);
     actions.shuffle(&mut thread_rng());
 
+    let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
+
     actions.sort_by_key(|action| match view.take_action(action) {
-        NewGameView::Continue(new) => turns_to_empty(&new.hand, &set_map) + 1,
+        NewGameView::Continue(new) => turns_to_empty(&new.hand, &set_map, &mut cache) + 1,
         NewGameView::Win => 0,
         NewGameView::Loss => 32,
     });
@@ -629,14 +631,7 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
 /// Returns minimum number of show actions required to empty hand.
 /// This iterates through all possible sets, checks validity against `set_map`,
 /// then evaluates remaining hand recursively.
-fn turns_to_empty(hand: &Vec<i32>, set_map: &SetMap) -> usize {
-    let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
-    cache.insert(Vec::default(), 0);
-
-    _turns_to_empty(&hand, &set_map, &mut cache)
-}
-
-fn _turns_to_empty(
+fn turns_to_empty(
     hand: &Vec<i32>,
     set_map: &SetMap,
     cache: &mut HashMap<Vec<i32>, usize>,
@@ -656,7 +651,7 @@ fn _turns_to_empty(
             })
             .filter(|(set, _)| set_map.contains_key(set))
             .map(
-                |(_, new_hand)| match _turns_to_empty(&new_hand, &set_map, cache) {
+                |(_, new_hand)| match turns_to_empty(&new_hand, &set_map, cache) {
                     1 => {
                         cache.insert(hand.clone(), 2);
                         return 2; // Return early
@@ -734,22 +729,25 @@ mod tests {
     #[test]
     fn test_turns_to_empty() {
         let set_map = generate_set_map();
+        let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
 
         // Trivial cases
-        assert_eq!(turns_to_empty(&vec![], &set_map), 0);
-        assert_eq!(turns_to_empty(&vec![0], &set_map), 1);
-        assert_eq!(turns_to_empty(&vec![0, 1, 2], &set_map), 1);
+        assert_eq!(turns_to_empty(&vec![0], &set_map, &mut cache), 1);
+        assert_eq!(turns_to_empty(&vec![0, 1, 2], &set_map, &mut cache), 1);
 
         // Fiddly examples
-        assert_eq!(turns_to_empty(&vec![0, 1, 0], &set_map), 2);
-        assert_eq!(turns_to_empty(&vec![1, 3, 5], &set_map), 3);
-        assert_eq!(turns_to_empty(&vec![1, 3, 1], &set_map), 2);
-        assert_eq!(turns_to_empty(&vec![1, 3, 3, 1], &set_map), 2);
-        assert_eq!(turns_to_empty(&vec![1, 3, 5, 7, 1], &set_map), 4);
+        assert_eq!(turns_to_empty(&vec![0, 1, 0], &set_map, &mut cache), 2);
+        assert_eq!(turns_to_empty(&vec![1, 3, 5], &set_map, &mut cache), 3);
+        assert_eq!(turns_to_empty(&vec![1, 3, 1], &set_map, &mut cache), 2);
+        assert_eq!(turns_to_empty(&vec![1, 3, 3, 1], &set_map, &mut cache), 2);
+        assert_eq!(
+            turns_to_empty(&vec![1, 3, 5, 7, 1], &set_map, &mut cache),
+            4
+        );
 
         // Big hands
         assert_eq!(
-            turns_to_empty(&vec![7, 3, 2, 1, 4, 7, 1, 2, 1], &set_map),
+            turns_to_empty(&vec![7, 3, 2, 1, 4, 7, 1, 2, 1], &set_map, &mut cache),
             5
         );
     }
