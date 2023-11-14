@@ -87,8 +87,12 @@ impl fmt::Display for Action {
             Self::Show(start, stop) => {
                 write!(f, "Show {} to {}", start, stop)
             }
-            Self::ScoutShow(_, _, _, _, _) => {
-                write!(f, "Scout and show!")
+            Self::ScoutShow(left, flip, insert, start, stop) => {
+                write!(
+                    f,
+                    "Scout and show! l:{}, f:{}, i:{}, {} to {}",
+                    left, flip, insert, start, stop
+                )
             }
         }
     }
@@ -567,10 +571,10 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
         for (left, flip) in [(false, false), (false, true), (true, false), (true, true)] {
             new_hand = hand.clone();
             match (left, flip) {
-                (false, false) => new_hand.insert(i, view.active[0].1),
-                (false, true) => new_hand.insert(i, view.active[0].0),
-                (true, false) => new_hand.insert(i, view.active[right].1),
-                (true, true) => new_hand.insert(i, view.active[right].0),
+                (false, false) => new_hand.insert(i, view.active[right].0),
+                (false, true) => new_hand.insert(i, view.active[right].1),
+                (true, false) => new_hand.insert(i, view.active[0].0),
+                (true, true) => new_hand.insert(i, view.active[0].1),
             }
 
             for start in 0..new_hand.len() {
