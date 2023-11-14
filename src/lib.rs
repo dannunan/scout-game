@@ -425,7 +425,6 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     loop {
         if game.turn == 0 {
             println!("\nRound {}", round);
-            println!("\n{:?}\n", top_only(&game.active));
             println!("{}", game);
             round += 1;
         }
@@ -434,6 +433,7 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
         let action = strategies[game.turn](&game.as_view(), &set_map);
         match action {
             Some(action) => {
+                println!("{:?}", top_only(&game.active));
                 println!("Player {}: {}", &game.turn, action);
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
