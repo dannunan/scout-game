@@ -527,10 +527,9 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     // Scout actions
     if !view.active.is_empty() {
         for i in 0..view.hand.len() + 1 {
-            actions.push(Action::Scout(false, false, i));
-            actions.push(Action::Scout(false, true, i));
-            actions.push(Action::Scout(true, false, i));
-            actions.push(Action::Scout(true, true, i));
+            for (left, flip) in [(false, false), (false, true), (true, false), (true, true)] {
+                actions.push(Action::Scout(left, flip, i));
+            }
         }
     }
 
@@ -542,6 +541,34 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
             if let Some(score) = set_map.get(&hand[start..stop + 1]) {
                 if *score > *active_set_score {
                     actions.push(Action::Show(start, stop))
+                }
+            }
+        }
+    }
+
+    // Scout and show actions
+    if !view.scout_show[0] | view.active.is_empty() {
+        return actions;
+    }
+
+    let mut new_hand: Vec<i32>;
+    for i in 0..view.hand.len() + 1 {
+        for (left, flip) in [(false, false), (false, true), (true, false), (true, true)] {
+            new_hand = hand.clone();
+            match (left, flip) {
+                (false, false) => new_hand.insert(i, view.active[0].1),
+                (false, true) => new_hand.insert(i, view.active[0].0),
+                (true, false) => new_hand.insert(i, view.active[view.active.len()].1),
+                (true, true) => new_hand.insert(i, view.active[view.active.len()].0),
+            }
+
+            for start in 0..new_hand.len() {
+                for stop in start..new_hand.len() {
+                    if let Some(score) = set_map.get(&new_hand[start..stop + 1]) {
+                        if *score > *active_set_score {
+                            actions.push(Action::ScoutShow(left, flip, i, start, stop))
+                        }
+                    }
                 }
             }
         }
