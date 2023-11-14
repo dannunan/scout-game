@@ -18,7 +18,7 @@ impl Card {
 type Set = VecDeque<Card>;
 
 /// Each player has a hand, score, and their "Scout show" move.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Player {
     hand: Set,
     score: i32,
@@ -97,6 +97,16 @@ impl fmt::Display for Action {
 impl fmt::Display for Player {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Score: {}, Hand: {:?}", self.score, top_only(&self.hand))
+    }
+}
+
+impl Default for Player {
+    fn default() -> Self {
+        Player {
+            hand: Default::default(),
+            score: Default::default(),
+            scout_show: true,
+        }
     }
 }
 
@@ -552,14 +562,15 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     }
 
     let mut new_hand: Vec<i32>;
+    let right = view.active.len() - 1;
     for i in 0..view.hand.len() + 1 {
         for (left, flip) in [(false, false), (false, true), (true, false), (true, true)] {
             new_hand = hand.clone();
             match (left, flip) {
                 (false, false) => new_hand.insert(i, view.active[0].1),
                 (false, true) => new_hand.insert(i, view.active[0].0),
-                (true, false) => new_hand.insert(i, view.active[view.active.len()].1),
-                (true, true) => new_hand.insert(i, view.active[view.active.len()].0),
+                (true, false) => new_hand.insert(i, view.active[right].1),
+                (true, true) => new_hand.insert(i, view.active[right].0),
             }
 
             for start in 0..new_hand.len() {
