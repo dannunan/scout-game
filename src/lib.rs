@@ -651,6 +651,9 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     }
 }
 
+/// Simple strategy which simply minimises the number of show turns required to
+/// empty the current hand. This results in aggressive rush plays, and is especially
+/// weak to mid-game large sets.
 pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
     let mut actions = get_valid_actions(&view, set_map);
     actions.shuffle(&mut thread_rng());
