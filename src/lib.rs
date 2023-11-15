@@ -567,22 +567,30 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     }
 
     let mut new_hand: Vec<i32>;
-    let right = view.active.len() - 1;
+    let mut scout_card: Card;
+    let mut new_active: VecDeque<Card>;
     for i in 0..view.hand.len() + 1 {
-        for (left, flip) in [(false, false), (false, true), (true, false), (true, true)] {
-            new_hand = hand.clone();
-            match (left, flip) {
-                (false, false) => new_hand.insert(i, view.active[right].0),
-                (false, true) => new_hand.insert(i, view.active[right].1),
-                (true, false) => new_hand.insert(i, view.active[0].0),
-                (true, true) => new_hand.insert(i, view.active[0].1),
-            }
+        for left in [true, false] {
+            for flip in [true, false] {
+                new_active = view.active.clone();
+                match left {
+                    true => scout_card = new_active.pop_front().unwrap(),
+                    false => scout_card = new_active.pop_back().unwrap(),
+                };
 
-            for start in 0..new_hand.len() {
-                for stop in start..new_hand.len() {
-                    if let Some(score) = set_map.get(&new_hand[start..stop + 1]) {
-                        if *score > *active_set_score {
-                            actions.push(Action::ScoutShow(left, flip, i, start, stop))
+                new_hand = hand.clone();
+                match flip {
+                    true => new_hand.insert(i, scout_card.1),
+                    false => new_hand.insert(i, scout_card.0),
+                }
+
+                let new_active_set_score = set_map.get(&top_only(&new_active)).unwrap_or(&0);
+                for start in 0..new_hand.len() {
+                    for stop in start..new_hand.len() {
+                        if let Some(score) = set_map.get(&new_hand[start..stop + 1]) {
+                            if *score > *new_active_set_score {
+                                actions.push(Action::ScoutShow(left, flip, i, start, stop))
+                            }
                         }
                     }
                 }
@@ -832,7 +840,8 @@ mod tests {
                 Action::Scout(false, true, 1),
                 Action::Scout(true, false, 1),
                 Action::Scout(true, true, 1),
-                // Action::ScoutShow(true, true, 1, 0, 1),
+                Action::ScoutShow(true, true, 0, 0, 1),
+                Action::ScoutShow(true, true, 1, 0, 1),
             ])
         );
     }
