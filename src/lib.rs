@@ -668,6 +668,36 @@ pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
     return Some(actions[0]);
 }
 
+pub struct Weights {
+    scout: i32,
+    show: i32,
+    scoutshow: i32,
+    turns_to_empty: i32,
+}
+
+pub fn strategy_weighted(view: &GameView, set_map: &SetMap, weights: Weights) -> Option<Action> {
+    let actions = get_valid_actions(&view, set_map);
+    let mut cache = HashMap::new();
+
+    return actions
+        .iter()
+        .max_by_key(|action| {
+            (match view.take_action(action) {
+                NewGameView::Win => 100,
+                NewGameView::Loss => 0,
+                NewGameView::Continue(new_view) => {
+                    weights.turns_to_empty
+                        * turns_to_empty(&new_view.hand, &set_map, &mut cache) as i32
+                }
+            }) * (match action {
+                Action::Scout(_, _, _) => weights.scout,
+                Action::Show(_, _) => weights.show,
+                Action::ScoutShow(_, _, _, _, _) => weights.scoutshow,
+            })
+        })
+        .copied();
+}
+
 /// Returns minimum number of show actions required to empty hand.
 /// This iterates through all possible sets, checks validity against `set_map`,
 /// then evaluates remaining hand recursively.
