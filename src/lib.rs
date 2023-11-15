@@ -651,25 +651,11 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     }
 }
 
-pub fn strategy_show_random(view: &GameView, set_map: &SetMap) -> Option<Action> {
-    let mut actions = get_valid_actions(&view, set_map);
-    actions.shuffle(&mut thread_rng());
-
-    let show = actions.iter().find(|x| match x {
-        Action::Show(_, _) => true,
-        _ => false,
-    });
-    match show {
-        Some(action) => return Some(*action),
-        None => return actions.pop(),
-    }
-}
-
 pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
     let mut actions = get_valid_actions(&view, set_map);
     actions.shuffle(&mut thread_rng());
 
-    let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
+    let mut cache = HashMap::new();
 
     actions.sort_by_key(|action| match view.take_action(action) {
         NewGameView::Continue(new) => turns_to_empty(&new.hand, &set_map, &mut cache) + 1,
