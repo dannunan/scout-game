@@ -27,7 +27,7 @@ pub struct Player {
 
 /// Player actions. These are Scout, Show and ScoutShow, which each take
 /// different parameters.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug, Hash)]
 pub enum Action {
     /// Scouting moves a card from the active set into the hand (it may be flipped)
     /// Specified with (left, flip, insert)
@@ -58,6 +58,7 @@ pub struct GameState {
 ///
 /// e.g. a `GameView` from the perspective of player 2 will store player 2's data in
 /// index 0, and player 3's data in index 1.
+#[derive(Clone)]
 pub struct GameView {
     hand: Vec<i32>,
     active: Set,
@@ -735,6 +736,8 @@ pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
 
     #[test]
@@ -766,6 +769,72 @@ mod tests {
 
         // Ascending == descending
         assert!(set_map.get(&vec![1, 2, 3]).unwrap() == set_map.get(&vec![3, 2, 1]).unwrap());
+    }
+
+    #[test]
+    fn test_get_valid_actions() {
+        let set_map = generate_set_map();
+        let base_view = GameView {
+            hand: Vec::new(),
+            active: VecDeque::new(),
+            active_owner: 3,
+            hand_sizes: vec![1, 1, 1, 1],
+            scores: vec![0, 0, 0, 0],
+            scout_show: vec![false, false, false, false],
+        };
+
+        // Test basic show cases
+        let mut view = base_view.clone();
+        view.hand.push(0); // hand: [0]
+        let actions: HashSet<Action> = get_valid_actions(&view, &set_map).iter().copied().collect();
+        assert_eq!(actions, HashSet::from_iter([Action::Show(0, 0)]));
+        view.hand.push(0); // hand: [0, 0]
+        let actions: HashSet<Action> = get_valid_actions(&view, &set_map).iter().copied().collect();
+        assert_eq!(
+            actions,
+            HashSet::from_iter([Action::Show(0, 0), Action::Show(0, 1), Action::Show(1, 1),])
+        );
+
+        // Test basic scout cases
+        let mut view = base_view.clone();
+        view.hand.push(0); // hand: [0]
+        view.active.push_back(Card(1, 1)); // active: [1]
+        let actions: HashSet<Action> = get_valid_actions(&view, &set_map).iter().copied().collect();
+        assert_eq!(
+            actions,
+            HashSet::from_iter([
+                Action::Scout(false, false, 0),
+                Action::Scout(false, true, 0),
+                Action::Scout(true, false, 0),
+                Action::Scout(true, true, 0),
+                Action::Scout(false, false, 1),
+                Action::Scout(false, true, 1),
+                Action::Scout(true, false, 1),
+                Action::Scout(true, true, 1),
+            ])
+        );
+
+        // Test more complex scout show case
+        let mut view = base_view.clone();
+        view.hand.push(0); // hand: [0]
+        view.active.push_back(Card(3, 0)); // this 0 can be used with scoutshow
+        view.active.push_back(Card(3, 3)); // active: [3, 3]
+        view.scout_show[0] = true;
+        let actions: HashSet<Action> = get_valid_actions(&view, &set_map).iter().copied().collect();
+        assert_eq!(
+            actions,
+            HashSet::from_iter([
+                Action::Scout(false, false, 0),
+                Action::Scout(false, true, 0),
+                Action::Scout(true, false, 0),
+                Action::Scout(true, true, 0),
+                Action::Scout(false, false, 1),
+                Action::Scout(false, true, 1),
+                Action::Scout(true, false, 1),
+                Action::Scout(true, true, 1),
+                // Action::ScoutShow(true, true, 1, 0, 1),
+            ])
+        );
     }
 
     #[test]
