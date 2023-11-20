@@ -4,7 +4,7 @@ fn main() {
     println!("Scout!");
 
     let strategies: Vec<scout::Strategy> = vec![
-        scout::strategy_rush,
+        scout::get_player_action,
         scout::strategy_rush,
         scout::strategy_rush,
         scout::strategy_rush,
