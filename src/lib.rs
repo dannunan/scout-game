@@ -527,11 +527,7 @@ fn generate_set_map() -> SetMap {
 }
 
 fn top_only(set: &Set) -> Vec<i32> {
-    let mut vec = Vec::new();
-    for card in set {
-        vec.push(card.0)
-    }
-    return vec;
+    set.iter().map(|card| card.0).collect()
 }
 
 /// Return all valid Actions for `view`. For a large hand this will include approximately:
