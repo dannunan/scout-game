@@ -12,7 +12,7 @@ fn main() {
 
     // println!("{:?}", scout::evaluate_strategies(&strategies, 1000));
 
-    match scout::watch(&strategies) {
+    match scout::run(&strategies) {
         Ok(game_result) => {
             println!("Game over! Scores: {:?}", game_result.scores);
         }
