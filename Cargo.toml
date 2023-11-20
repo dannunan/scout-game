@@ -1,6 +1,6 @@
 [package]
 name = "scout_game"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Rust implementation of the card game Scout, originally designed by Kei Kanjino and published by Oink Games inc."
 license = "MIT"
