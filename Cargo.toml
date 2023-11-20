@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Rust implementation of the card game Scout, originally designed by Kei Kanjino and published by Oink Games inc."
 license = "MIT"
+repository = "https://github.com/dannunan/scout-game" 
 
 [dependencies]
 rand = "0.6.0"
