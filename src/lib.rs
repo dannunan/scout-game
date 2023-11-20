@@ -670,8 +670,6 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
                 show_split[1].parse().unwrap(),
             )
         }
-        // TODO: Add Scoutshow input - this needs to preview hand after show, and give escape
-        // option (in which case a normal Show option is returned)
         "quit" => return None,
         _ => {
             println!("Input not accepted! Enter: scout, show, scoutshow, or quit");
