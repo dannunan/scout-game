@@ -628,9 +628,8 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     // Print some info
     println!("{}", view);
     let indexes: Vec<usize> = (0..view.hand.len()).collect();
-    println!("       Indexes:{:?}", indexes);
+    println!("       Indexes:{:?}\n", indexes);
 
-    print!("\n");
     let mut input = String::new();
     println!("\nSelect action:");
     io::stdin()
@@ -640,7 +639,37 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
     let action = match split[0] {
         "scout" => Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap()),
         "show" => Action::Show(split[1].parse().unwrap(), split[2].parse().unwrap()),
-        "scoutshow" => Action::ScoutShow(true, false, 0, 0, 0),
+        "scoutshow" => {
+            let scout = Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap());
+
+            // Scout and show should never end round - halt if this happens
+            // TODO: create modified copy of view to prevent scout round end condition
+            let scout_view = match view.take_action(&scout) {
+                NewGameView::Win => return None,
+                NewGameView::Loss => return None,
+                NewGameView::Continue(view) => view,
+            };
+
+            // Show player the resulting GameView after scouting
+            println!("{}", scout_view);
+            let indexes: Vec<usize> = (0..scout_view.hand.len()).collect();
+            println!("       Indexes:{:?}\n", indexes);
+
+            // Get show component
+            let mut show_input = String::new();
+            println!("\nSelect show action (finish scoutshow):");
+            io::stdin()
+                .read_line(&mut show_input)
+                .expect("Failed to read line");
+            let show_split: Vec<&str> = show_input.trim().split(" ").collect();
+            Action::ScoutShow(
+                split[1] == "1",
+                split[2] == "1",
+                split[3].parse().unwrap(),
+                show_split[0].parse().unwrap(),
+                show_split[1].parse().unwrap(),
+            )
+        }
         // TODO: Add Scoutshow input - this needs to preview hand after show, and give escape
         // option (in which case a normal Show option is returned)
         "quit" => return None,
