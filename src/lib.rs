@@ -422,6 +422,9 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
 /// or in the case of runtime error, the `GameState` which lead to the error.
 ///
 /// This function copies `scout::run` but has more side-effects, primarily for debugging.
+/// TODO: this gives too much information for a human player, but the amount of info `run` can give
+/// is limited as it only has access to a GameView - this function should serve this role, and some
+/// effects should be removed from `get_player_action`
 pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
     let set_map = generate_set_map();
     let n_players = strategies.len();
