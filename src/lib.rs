@@ -376,6 +376,11 @@ impl GameView {
 /// These can include user input, but are mostly computer players.
 /// Returning `None` will halt the current game.
 /// `SetMap` is a HashMap of set values - this is static for the duration of a game.
+///
+/// TODO:
+/// Possibly this whole structure needs some thought, currently strategies are stateless,
+/// which limits caching to a single GameState. This also makes dynamically training strategies
+/// difficult. This should probably be a struct with a get_action method.
 pub type Strategy = fn(&GameView, &SetMap) -> Option<Action>;
 
 pub struct GameResult {
@@ -637,6 +642,8 @@ pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
         "scout" => Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap()),
         "show" => Action::Show(split[1].parse().unwrap(), split[2].parse().unwrap()),
         "scoutshow" => Action::ScoutShow(true, false, 0, 0, 0),
+        // TODO: Add Scoutshow input - this needs to preview hand after show, and give escape
+        // option (in which case a normal Show option is returned)
         "quit" => return None,
         _ => {
             println!("Input not accepted! Enter: scout, show, scoutshow, or quit");
@@ -675,6 +682,8 @@ pub struct Weights {
     turns_to_empty: i32,
 }
 
+/// WIP - Strategy which considers a few metrics based on specified Weights and picks the highest score.
+/// See Strategy TODO for related structural issue here.
 pub fn strategy_weighted(view: &GameView, set_map: &SetMap, weights: Weights) -> Option<Action> {
     let actions = get_valid_actions(&view, set_map);
     let mut cache = HashMap::new();
