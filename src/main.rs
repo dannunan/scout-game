@@ -3,16 +3,14 @@ use std::process;
 fn main() {
     println!("Scout!");
 
-    let strategies: Vec<scout::Strategy> = vec![
-        scout::get_player_action,
-        scout::strategy_rush,
-        scout::strategy_rush,
-        scout::strategy_rush,
+    let strategies: Vec<scout_game::Strategy> = vec![
+        scout_game::get_player_action,
+        scout_game::strategy_rush,
+        scout_game::strategy_rush,
+        scout_game::strategy_rush,
     ];
 
-    // println!("{:?}", scout::evaluate_strategies(&strategies, 1000));
-
-    match scout::run(&strategies) {
+    match scout_game::run(&strategies) {
         Ok(game_result) => {
             println!("Game over! Scores: {:?}", game_result.scores);
         }

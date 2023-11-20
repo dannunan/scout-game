@@ -1,5 +1,5 @@
 # scout-game
-Rust implementation of the card game "Scout", originally designed by Kei Kanjino and published by Oink Games inc.
+Rust implementation of the card game **Scout**, originally designed by Kei Kanjino and published by Oink Games inc.
 
 ## Scout
 This readme is not intended as a game manual, and will assume familiarity with the rules.
