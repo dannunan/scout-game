@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::{HashMap, VecDeque};
-use std::{fmt, io};
+use std::fmt;
 
 #[derive(Debug, Clone)]
 /// A card, this stores two values, however only the first is "active".
@@ -60,12 +60,12 @@ pub struct GameState {
 /// index 0, and player 3's data in index 1.
 #[derive(Clone)]
 pub struct GameView {
-    hand: Vec<i32>,
-    active: Set,
-    active_owner: usize,
-    scores: Vec<i32>,
-    hand_sizes: Vec<usize>,
-    scout_show: Vec<bool>,
+    pub hand: Vec<i32>,
+    pub active: Set,
+    pub active_owner: usize,
+    pub scores: Vec<i32>,
+    pub hand_sizes: Vec<usize>,
+    pub scout_show: Vec<bool>,
 }
 
 enum NewGameState {
@@ -73,7 +73,8 @@ enum NewGameState {
     GameOver(Vec<i32>),
 }
 
-enum NewGameView {
+/// Result of taking an action on a GameView. This may end the game, resulting in Win or Loss.
+pub enum NewGameView {
     Continue(GameView),
     Win,
     Loss,
@@ -330,7 +331,7 @@ impl GameView {
         }
     }
 
-    fn take_action(&self, action: &Action) -> NewGameView {
+    pub fn take_action(&self, action: &Action) -> NewGameView {
         let mut view: GameView;
         match action {
             Action::Scout(left, flip, index) => view = self.scout(*left, *flip, *index),
@@ -489,11 +490,11 @@ fn create_deck(game_size: usize, shuffle: bool) -> Set {
     return deck;
 }
 
-/// To efficiently compare the value of sets, this hashmap is created. In practice this HashMap
-/// is const, however due to const limitations this currently is created by `scout::run`.
-type SetMap = HashMap<Vec<i32>, i32>;
+/// To efficiently compare the value of sets, this hashmap is created.
+pub type SetMap = HashMap<Vec<i32>, i32>;
 
-fn generate_set_map() -> SetMap {
+/// Generate the default set hierarchy for the deck of 0-9 valued cards
+pub fn default_set_map() -> SetMap {
     // Generate all legal sets, and assign an i32 value to each.
     // This is done by generating the sets in order of their value
 
@@ -535,7 +536,7 @@ fn top_only(set: &Set) -> Vec<i32> {
 ///
 /// These numbers decrease rapidly as the game progresses - particularly once the ScoutShow action
 /// is used for the round.
-fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
+pub fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     let mut actions = Vec::new();
 
     // Scout actions
@@ -568,6 +569,9 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     let mut new_hand: Vec<i32>;
     let mut scout_card: Card;
     let mut new_active: VecDeque<Card>;
+
+    // To find all scout and show actions, iter through all valid scout actions, then generate
+    // a new GameView and find all valid show actions
     for i in 0..view.hand.len() + 1 {
         for left in [true, false] {
             for flip in [true, false] {
@@ -598,174 +602,6 @@ fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     }
 
     return actions;
-}
-
-/// Strategy which requests user for input
-/// When prompted for an action, enter one of the following actions:
-/// - `scout [left] [flip] [index]`
-/// - `show [start] [stop]`
-/// - `scoutshow [left] [flip] [index]`
-/// - `quit`
-///
-/// All arguments should be numeric (1 representing `true`).
-///
-/// The **scout** action has arguments: `left` for which side of the active set to scout,
-/// `flip` if the card is to be flipped, and the `index` to insert the card at.
-///
-/// The **show** action has arguments `start` and `stop`, which are the inclusive bounds of
-/// the set to show. A single card can be played by repeating e.g. `show 2 2`.
-///
-/// The final action, **scoutshow**, is simply the above actions combined. You should first
-/// enter arguments for the scout step, then you will be presented with a new view and can input a show action.
-///
-/// Entering **quit** will cause the game to halt. This will print a debug view of the `GameState` before exiting.
-pub fn get_player_action(view: &GameView, set_map: &SetMap) -> Option<Action> {
-    // Print some info
-    println!("{}", view);
-    let indexes: Vec<usize> = (0..view.hand.len()).collect();
-    println!("       Indexes:{:?}\n", indexes);
-
-    let mut input = String::new();
-    println!("\nSelect action:");
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
-    let split: Vec<&str> = input.trim().split(" ").collect();
-    let action = match split[0] {
-        "scout" => Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap()),
-        "show" => Action::Show(split[1].parse().unwrap(), split[2].parse().unwrap()),
-        "scoutshow" => {
-            let scout = Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap());
-
-            // Scout and show should never end round - halt if this happens
-            // TODO: create modified copy of view to prevent scout round end condition
-            let scout_view = match view.take_action(&scout) {
-                NewGameView::Win => return None,
-                NewGameView::Loss => return None,
-                NewGameView::Continue(view) => view,
-            };
-
-            // Show player the resulting GameView after scouting
-            println!("{}", scout_view);
-            let indexes: Vec<usize> = (0..scout_view.hand.len()).collect();
-            println!("       Indexes:{:?}\n", indexes);
-
-            // Get show component
-            let mut show_input = String::new();
-            println!("\nSelect show action (finish scoutshow):");
-            io::stdin()
-                .read_line(&mut show_input)
-                .expect("Failed to read line");
-            let show_split: Vec<&str> = show_input.trim().split(" ").collect();
-            Action::ScoutShow(
-                split[1] == "1",
-                split[2] == "1",
-                split[3].parse().unwrap(),
-                show_split[0].parse().unwrap(),
-                show_split[1].parse().unwrap(),
-            )
-        }
-        "quit" => return None,
-        _ => {
-            println!("Input not accepted! Enter: scout, show, scoutshow, or quit");
-            return get_player_action(&view, set_map);
-        }
-    };
-    if get_valid_actions(&view, set_map).contains(&action) {
-        return Some(action);
-    } else {
-        println!("Not a valid action!");
-        return get_player_action(&view, set_map);
-    }
-}
-
-/// Simple strategy which simply minimises the number of show turns required to
-/// empty the current hand. This results in aggressive rush plays, and is especially
-/// weak to mid-game large sets.
-pub fn strategy_rush(view: &GameView, set_map: &SetMap) -> Option<Action> {
-    let mut actions = get_valid_actions(&view, set_map);
-    actions.shuffle(&mut thread_rng());
-
-    let mut cache = HashMap::new();
-
-    actions.sort_by_key(|action| match view.take_action(action) {
-        NewGameView::Continue(new) => turns_to_empty(&new.hand, &set_map, &mut cache) + 1,
-        NewGameView::Win => 0,
-        NewGameView::Loss => 32,
-    });
-    return Some(actions[0]);
-}
-
-pub struct Weights {
-    scout: i32,
-    show: i32,
-    scoutshow: i32,
-    turns_to_empty: i32,
-}
-
-/// WIP - Strategy which considers a few metrics based on specified Weights and picks the highest score.
-/// See Strategy TODO for related structural issue here.
-pub fn strategy_weighted(view: &GameView, set_map: &SetMap, weights: Weights) -> Option<Action> {
-    let actions = get_valid_actions(&view, set_map);
-    let mut cache = HashMap::new();
-
-    return actions
-        .iter()
-        .max_by_key(|action| {
-            (match view.take_action(action) {
-                NewGameView::Win => 100,
-                NewGameView::Loss => 0,
-                NewGameView::Continue(new_view) => {
-                    weights.turns_to_empty
-                        * turns_to_empty(&new_view.hand, &set_map, &mut cache) as i32
-                }
-            }) * (match action {
-                Action::Scout(_, _, _) => weights.scout,
-                Action::Show(_, _) => weights.show,
-                Action::ScoutShow(_, _, _, _, _) => weights.scoutshow,
-            })
-        })
-        .copied();
-}
-
-/// Returns minimum number of show actions required to empty hand.
-/// This iterates through all possible sets, checks validity against `set_map`,
-/// then evaluates remaining hand recursively.
-fn turns_to_empty(
-    hand: &Vec<i32>,
-    set_map: &SetMap,
-    cache: &mut HashMap<Vec<i32>, usize>,
-) -> usize {
-    if set_map.contains_key(hand) {
-        return 1;
-    }
-
-    let turns = match cache.get(hand) {
-        Some(n) => return *n,
-        None => (0..hand.len())
-            .flat_map(|start| (start..hand.len()).map(move |stop| (start..stop + 1)))
-            .map(|range| {
-                let mut new_hand = hand.clone();
-                let set: Vec<i32> = new_hand.drain(range).collect();
-                (set, new_hand)
-            })
-            .filter(|(set, _)| set_map.contains_key(set))
-            .map(
-                |(_, new_hand)| match turns_to_empty(&new_hand, &set_map, cache) {
-                    1 => {
-                        cache.insert(hand.clone(), 2);
-                        return 2; // Return early
-                    }
-                    x => x + 1,
-                },
-            )
-            .min()
-            .unwrap(),
-    };
-
-    // Cache!
-    cache.insert(hand.clone(), turns);
-    return turns;
 }
 
 /// Convenience function for bulk running `n` games.
@@ -809,7 +645,7 @@ mod tests {
 
     #[test]
     fn test_set_map() {
-        let set_map = generate_set_map();
+        let set_map = default_set_map();
 
         // Empty or non matching returns None
         assert_eq!(set_map.get(&Vec::new()), None);
@@ -830,7 +666,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_actions() {
-        let set_map = generate_set_map();
+        let set_map = default_set_map();
         let base_view = GameView {
             hand: Vec::new(),
             active: VecDeque::new(),
@@ -892,32 +728,6 @@ mod tests {
                 Action::ScoutShow(true, true, 0, 0, 1),
                 Action::ScoutShow(true, true, 1, 0, 1),
             ])
-        );
-    }
-
-    #[test]
-    fn test_turns_to_empty() {
-        let set_map = generate_set_map();
-        let mut cache: HashMap<Vec<i32>, usize> = HashMap::new();
-
-        // Trivial cases
-        assert_eq!(turns_to_empty(&vec![0], &set_map, &mut cache), 1);
-        assert_eq!(turns_to_empty(&vec![0, 1, 2], &set_map, &mut cache), 1);
-
-        // Fiddly examples
-        assert_eq!(turns_to_empty(&vec![0, 1, 0], &set_map, &mut cache), 2);
-        assert_eq!(turns_to_empty(&vec![1, 3, 5], &set_map, &mut cache), 3);
-        assert_eq!(turns_to_empty(&vec![1, 3, 1], &set_map, &mut cache), 2);
-        assert_eq!(turns_to_empty(&vec![1, 3, 3, 1], &set_map, &mut cache), 2);
-        assert_eq!(
-            turns_to_empty(&vec![1, 3, 5, 7, 1], &set_map, &mut cache),
-            4
-        );
-
-        // Big hands
-        assert_eq!(
-            turns_to_empty(&vec![7, 3, 2, 1, 4, 7, 1, 2, 1], &set_map, &mut cache),
-            5
         );
     }
 }
