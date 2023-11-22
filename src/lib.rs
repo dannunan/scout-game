@@ -389,13 +389,12 @@ pub struct GameResult {
 ///
 /// Returns `GameResult` object containing final scores,
 /// or in the case of runtime error, the `GameState` which lead to the error.
-pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
-    let set_map = generate_set_map();
+pub fn run(strategies: &Vec<impl Strategy>) -> Result<GameResult, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
 
     loop {
-        let action = strategies[game.turn](&game.as_view(), &set_map);
+        let action = strategies[game.turn].get_action(&game.as_view());
         match action {
             Some(action) => {
                 match game.take_action(&action) {
@@ -422,8 +421,7 @@ pub fn run(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
 /// TODO: this gives too much information for a human player, but the amount of info `run` can give
 /// is limited as it only has access to a GameView - this function should serve this role, and some
 /// effects should be removed from `get_player_action`
-pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
-    let set_map = generate_set_map();
+pub fn watch(strategies: &Vec<impl Strategy>) -> Result<GameResult, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut round = 0;
@@ -436,7 +434,7 @@ pub fn watch(strategies: &Vec<Strategy>) -> Result<GameResult, GameState> {
         }
 
         // Get action using strategy
-        let action = strategies[game.turn](&game.as_view(), &set_map);
+        let action = strategies[game.turn].get_action(&game.as_view());
         match action {
             Some(action) => {
                 println!("{:?}", top_only(&game.active));
@@ -774,7 +772,7 @@ fn turns_to_empty(
 ///
 /// Returns number of wins for each strategy.
 /// Drawing for 1st place counts as a win, so the total may exceed the number of games.
-pub fn evaluate_strategies(strategies: &Vec<Strategy>, n: usize) -> Vec<i32> {
+pub fn evaluate_strategies(strategies: &Vec<impl Strategy>, n: usize) -> Vec<i32> {
     let n_strategies = strategies.len();
     let mut wins = vec![0; n_strategies];
     for _ in 0..n {
