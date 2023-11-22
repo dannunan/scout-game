@@ -372,16 +372,13 @@ impl GameView {
     }
 }
 
-/// Strategies are functions which generate an `Action` based on a `GameView`.
+/// Strategy trait implements get_action method to generates an `Action` based on a `GameView`.
 /// These can include user input, but are mostly computer players.
 /// Returning `None` will halt the current game.
-/// `SetMap` is a HashMap of set values - this is static for the duration of a game.
-///
-/// TODO:
-/// Possibly this whole structure needs some thought, currently strategies are stateless,
-/// which limits caching to a single GameState. This also makes dynamically training strategies
-/// difficult. This should probably be a struct with a get_action method.
-pub type Strategy = fn(&GameView, &SetMap) -> Option<Action>;
+
+pub trait Strategy {
+    fn get_action(&self, view: &GameView) -> Option<Action>;
+}
 
 pub struct GameResult {
     pub scores: Vec<i32>,
