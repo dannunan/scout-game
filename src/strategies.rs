@@ -68,7 +68,7 @@ pub struct GetPlayerAction {
 }
 
 impl GetPlayerAction {
-    fn new() -> GetPlayerAction {
+    pub fn new() -> GetPlayerAction {
         GetPlayerAction {
             set_map: scout_game::default_set_map(),
         }
@@ -145,6 +145,16 @@ pub struct StrategyRush {
     set_map: SetMap,
     cache: HashMap<Vec<i32>, usize>,
 }
+
+impl StrategyRush {
+    pub fn new() -> StrategyRush {
+        StrategyRush {
+            set_map: scout_game::default_set_map(),
+            cache: HashMap::new(),
+        }
+    }
+}
+
 impl Strategy for StrategyRush {
     fn get_action(&self, view: &GameView) -> Option<Action> {
         let mut actions = get_valid_actions(&view, &self.set_map);
@@ -161,46 +171,39 @@ impl Strategy for StrategyRush {
     }
 }
 
-pub struct Weights {
-    scout: i32,
-    show: i32,
-    scoutshow: i32,
-    turns_to_empty: i32,
-}
+// /// WIP - Strategy which considers a few metrics based on specified Weights and picks the highest score.
+// /// See Strategy TODO for related structural issue here.
+// pub struct StrategyWeighted {
+//     set_map: SetMap,
+//     cache: HashMap<Vec<i32>, usize>,
+//     scout: i32,
+//     show: i32,
+//     scoutshow: i32,
+//     turns_to_empty: i32,
+// }
+// impl Strategy for StrategyWeighted {
+//     fn get_action(&self, view: &GameView) -> Option<Action> {
+//         let actions = get_valid_actions(&view, &self.set_map);
 
-/// WIP - Strategy which considers a few metrics based on specified Weights and picks the highest score.
-/// See Strategy TODO for related structural issue here.
-pub struct StrategyWeighted {
-    set_map: SetMap,
-    scout: i32,
-    show: i32,
-    scoutshow: i32,
-    turns_to_empty: i32,
-}
-impl Strategy for StrategyWeighted {
-    fn get_action(&self, view: &GameView) -> Option<Action> {
-        let actions = get_valid_actions(&view, &self.set_map);
-        let mut cache = HashMap::new();
-
-        return actions
-            .iter()
-            .max_by_key(|action| {
-                (match view.take_action(action) {
-                    NewGameView::Win => 100,
-                    NewGameView::Loss => 0,
-                    NewGameView::Continue(new_view) => {
-                        self.turns_to_empty
-                            * turns_to_empty(&new_view.hand, &self.set_map, &mut cache) as i32
-                    }
-                }) * (match action {
-                    Action::Scout(_, _, _) => self.scout,
-                    Action::Show(_, _) => self.show,
-                    Action::ScoutShow(_, _, _, _, _) => self.scoutshow,
-                })
-            })
-            .copied();
-    }
-}
+//         return actions
+//             .iter()
+//             .max_by_key(|action| {
+//                 (match view.take_action(action) {
+//                     NewGameView::Win => 100,
+//                     NewGameView::Loss => 0,
+//                     NewGameView::Continue(new_view) => {
+//                         &self.turns_to_empty
+//                             * turns_to_empty(&new_view.hand, &self.set_map, &mut self.cache) as i32
+//                     }
+//                 }) * (match action {
+//                     Action::Scout(_, _, _) => self.scout,
+//                     Action::Show(_, _) => self.show,
+//                     Action::ScoutShow(_, _, _, _, _) => self.scoutshow,
+//                 })
+//             })
+//             .copied();
+//     }
+// }
 
 #[test]
 fn test_turns_to_empty() {
