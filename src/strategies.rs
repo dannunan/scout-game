@@ -89,11 +89,18 @@ impl Strategy for GetPlayerAction {
             .expect("Failed to read line");
         let split: Vec<&str> = input.trim().split(" ").collect();
         let action = match split[0] {
-            "scout" => Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap()),
-            "show" => Action::Show(split[1].parse().unwrap(), split[2].parse().unwrap()),
+            "scout" => Action::Scout(
+                split[1] == "1",
+                split[2] == "1",
+                split[3].parse().unwrap_or(0),
+            ),
+            "show" => Action::Show(split[1].parse().unwrap_or(0), split[2].parse().unwrap_or(0)),
             "scoutshow" => {
-                let scout =
-                    Action::Scout(split[1] == "1", split[2] == "1", split[3].parse().unwrap());
+                let scout = Action::Scout(
+                    split[1] == "1",
+                    split[2] == "1",
+                    split[3].parse().unwrap_or(0),
+                );
 
                 // Scout and show should never end round - halt if this happens
                 // TODO: create modified copy of view to prevent scout round end condition
@@ -120,17 +127,17 @@ impl Strategy for GetPlayerAction {
                 let start: usize;
                 let stop: usize;
                 if show_split.len() == 2 {
-                    start = show_split[0].parse().unwrap();
-                    stop = show_split[1].parse().unwrap();
+                    start = show_split[0].parse().unwrap_or(0);
+                    stop = show_split[1].parse().unwrap_or(0);
                 } else {
-                    start = show_split[1].parse().unwrap();
-                    stop = show_split[2].parse().unwrap();
+                    start = show_split[1].parse().unwrap_or(0);
+                    stop = show_split[2].parse().unwrap_or(0);
                 }
 
                 Action::ScoutShow(
                     split[1] == "1",
                     split[2] == "1",
-                    split[3].parse().unwrap(),
+                    split[3].parse().unwrap_or(0),
                     start,
                     stop,
                 )
