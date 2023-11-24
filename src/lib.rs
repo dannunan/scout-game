@@ -417,12 +417,10 @@ pub fn run(strategies: &mut Vec<Box<dyn Strategy>>) -> Result<GameResult, GameSt
 ///
 /// Returns `GameResult` object containing final scores,
 /// or in the case of runtime error, the `GameState` which lead to the error.
-///
-/// This function copies `scout::run` but has more side-effects, primarily for debugging.
-/// TODO: this gives too much information for a human player, but the amount of info `run` can give
-/// is limited as it only has access to a GameView - this function should serve this role, and some
-/// effects should be removed from `get_player_action`
-pub fn watch(strategies: &mut Vec<Box<dyn Strategy>>) -> Result<GameResult, GameState> {
+pub fn watch(
+    strategies: &mut Vec<Box<dyn Strategy>>,
+    show_hands: bool,
+) -> Result<GameResult, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut round = 0;
@@ -430,7 +428,9 @@ pub fn watch(strategies: &mut Vec<Box<dyn Strategy>>) -> Result<GameResult, Game
     loop {
         if game.turn == 0 {
             println!("\nRound {}", round);
-            println!("{}", game);
+            if show_hands {
+                println!("{}", game)
+            };
             round += 1;
         }
 
@@ -438,8 +438,8 @@ pub fn watch(strategies: &mut Vec<Box<dyn Strategy>>) -> Result<GameResult, Game
         let action = strategies[game.turn].get_action(&game.as_view());
         match action {
             Some(action) => {
-                println!("{:?}", top_only(&game.active));
-                println!("Player {}: {}", &game.turn, action);
+                println!("Active: {:?}", top_only(&game.active));
+                println!("Player {} plays: {}", &game.turn, action);
                 match game.take_action(&action) {
                     NewGameState::Continue(new) => game = new,
                     NewGameState::GameOver(scores) => {

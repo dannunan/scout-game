@@ -11,7 +11,7 @@ fn main() {
         Box::new(strategies::StrategyRush::new()),
     ];
 
-    match scout_game::run(&mut strategies) {
+    match scout_game::watch(&mut strategies, false) {
         Ok(game_result) => {
             println!("Game over! Scores: {:?}", game_result.scores);
         }
