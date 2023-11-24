@@ -422,7 +422,7 @@ pub fn run(strategies: &mut Vec<Box<dyn Strategy>>) -> Result<GameResult, GameSt
 /// TODO: this gives too much information for a human player, but the amount of info `run` can give
 /// is limited as it only has access to a GameView - this function should serve this role, and some
 /// effects should be removed from `get_player_action`
-pub fn watch(strategies: &mut Vec<Box<impl Strategy>>) -> Result<GameResult, GameState> {
+pub fn watch(strategies: &mut Vec<Box<dyn Strategy>>) -> Result<GameResult, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut round = 0;
