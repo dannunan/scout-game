@@ -378,7 +378,7 @@ impl GameView {
 /// Returning `None` will halt the current game.
 
 pub trait Strategy {
-    fn get_action(&self, view: &GameView) -> Option<Action>;
+    fn get_action(&mut self, view: &GameView) -> Option<Action>;
 }
 
 pub struct GameResult {
@@ -390,7 +390,7 @@ pub struct GameResult {
 ///
 /// Returns `GameResult` object containing final scores,
 /// or in the case of runtime error, the `GameState` which lead to the error.
-pub fn run(strategies: &Vec<Box<impl Strategy>>) -> Result<GameResult, GameState> {
+pub fn run(strategies: &mut Vec<Box<dyn Strategy>>) -> Result<GameResult, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
 
@@ -422,7 +422,7 @@ pub fn run(strategies: &Vec<Box<impl Strategy>>) -> Result<GameResult, GameState
 /// TODO: this gives too much information for a human player, but the amount of info `run` can give
 /// is limited as it only has access to a GameView - this function should serve this role, and some
 /// effects should be removed from `get_player_action`
-pub fn watch(strategies: &Vec<Box<impl Strategy>>) -> Result<GameResult, GameState> {
+pub fn watch(strategies: &mut Vec<Box<impl Strategy>>) -> Result<GameResult, GameState> {
     let n_players = strategies.len();
     let mut game = GameState::new(n_players, true);
     let mut round = 0;
@@ -602,29 +602,6 @@ pub fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     }
 
     return actions;
-}
-
-/// Convenience function for bulk running `n` games.
-///
-/// Returns number of wins for each strategy.
-/// Drawing for 1st place counts as a win, so the total may exceed the number of games.
-pub fn evaluate_strategies(strategies: &Vec<Box<impl Strategy>>, n: usize) -> Vec<i32> {
-    let n_strategies = strategies.len();
-    let mut wins = vec![0; n_strategies];
-    for _ in 0..n {
-        match run(&strategies) {
-            Ok(game_result) => {
-                let max_score = *game_result.scores.iter().max().unwrap();
-                for i in 0..n_strategies {
-                    if game_result.scores[i] == max_score {
-                        wins[i] += 1;
-                    }
-                }
-            }
-            Err(_) => {}
-        }
-    }
-    return wins;
 }
 
 #[cfg(test)]
