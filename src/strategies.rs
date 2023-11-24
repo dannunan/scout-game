@@ -115,12 +115,24 @@ impl Strategy for GetPlayerAction {
                     .read_line(&mut show_input)
                     .expect("Failed to read line");
                 let show_split: Vec<&str> = show_input.trim().split(" ").collect();
+
+                // Players may enter "show 1 1" or "1 1" - best to just accept both
+                let start: usize;
+                let stop: usize;
+                if show_split.len() == 2 {
+                    start = show_split[0].parse().unwrap();
+                    stop = show_split[1].parse().unwrap();
+                } else {
+                    start = show_split[1].parse().unwrap();
+                    stop = show_split[2].parse().unwrap();
+                }
+
                 Action::ScoutShow(
                     split[1] == "1",
                     split[2] == "1",
                     split[3].parse().unwrap(),
-                    show_split[0].parse().unwrap(),
-                    show_split[1].parse().unwrap(),
+                    start,
+                    stop,
                 )
             }
             "quit" => return None,
