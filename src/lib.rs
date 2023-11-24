@@ -575,6 +575,7 @@ pub fn get_valid_actions(view: &GameView, set_map: &SetMap) -> Vec<Action> {
     for i in 0..view.hand.len() + 1 {
         for left in [true, false] {
             for flip in [true, false] {
+                // TODO: more .map()
                 new_active = view.active.clone();
                 match left {
                     true => scout_card = new_active.pop_front().unwrap(),
