@@ -11,7 +11,7 @@ A core mechanic in scout is that players hands **cannot be reordered**. To creat
 This module uses card values ranging from 0-9, instead of the original 1-10.
 
 ## Command Line Interface
-Running from the command-line will start a game against 3 computer players. When prompted for an action, enter one of the following actions:
+Running the package will start a game against 3 computer players. When prompted for an action, enter one of the following actions:
 - `scout [left] [flip] [index]`
 - `show [start] [stop]`
 - `scoutshow [left] [flip] [index]`
@@ -28,19 +28,27 @@ The final action, **scoutshow**, is simply the above actions combined. You shoul
 Entering **quit** will cause the game to halt. This will print a debug view of the `GameState` before exiting.
 
 ## Library
-The primary reason for importing to a script would be to implement custom `Strategy` functions, to play against them or test them against the built-in computer players.
+To create a game instance, pass a vector of boxed strategy structs to `scout_game::run` or `scout_game::watch`. Both will run a single game, however `watch` prints information during the game.
 
-To create a game instance, pass a vector of strategy functions to `scout::run`. You can add a human player with the `get_player_action` strategy. The number of strategies determines the number of players, which must be between 3 and 5.
+Custom computer players can be created with structs which implement `Strategy`.
+The current strategies are `GetPlayerAction` and `StrategyRush`.
+`GetPlayerAction` prompts the user for actions, `StrategyRush` is a crude strategy which attempts to end the game as fast as possible.
+
+The number of strategies determines the number of players, which must be between 3 and 5.
 
 ```rust
-let strategies: Vec<scout::Strategy> = vec![
-        scout::get_player_action,
-        scout::strategy_rush,
-        scout::strategy_rush,
-        scout::strategy_rush,
+
+fn main() {
+    println!("Scout!");
+
+    let mut strategies: Vec<Box<dyn scout_game::Strategy>> = vec![
+        Box::new(strategies::GetPlayerAction::new()),
+        Box::new(strategies::StrategyRush::new()),
+        Box::new(strategies::StrategyRush::new()),
+        Box::new(strategies::StrategyRush::new()),
     ];
 
-    match scout::run(&strategies) {
+    match scout_game::watch(&mut strategies, false) {
         Ok(game_result) => {
             println!("Game over! Scores: {:?}", game_result.scores);
         }
@@ -49,4 +57,6 @@ let strategies: Vec<scout::Strategy> = vec![
             process::exit(1);
         }
     }
+    process::exit(0);
+}
 ```
