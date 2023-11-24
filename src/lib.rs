@@ -376,7 +376,6 @@ impl GameView {
 /// Strategy trait implements get_action method to generates an `Action` based on a `GameView`.
 /// These can include user input, but are mostly computer players.
 /// Returning `None` will halt the current game.
-
 pub trait Strategy {
     fn get_action(&mut self, view: &GameView) -> Option<Action>;
 }
