@@ -76,7 +76,7 @@ impl GetPlayerAction {
 }
 
 impl Strategy for GetPlayerAction {
-    fn get_action(&self, view: &GameView) -> Option<Action> {
+    fn get_action(&mut self, view: &GameView) -> Option<Action> {
         // Print some info
         println!("{}", view);
         let indexes: Vec<usize> = (0..view.hand.len()).collect();
@@ -156,17 +156,19 @@ impl StrategyRush {
 }
 
 impl Strategy for StrategyRush {
-    fn get_action(&self, view: &GameView) -> Option<Action> {
+    fn get_action(&mut self, view: &GameView) -> Option<Action> {
         let mut actions = get_valid_actions(&view, &self.set_map);
         actions.shuffle(&mut thread_rng());
 
-        let mut cache = HashMap::new();
+        let mut cache = self.cache.clone();
 
         actions.sort_by_key(|action| match view.take_action(action) {
             NewGameView::Continue(new) => turns_to_empty(&new.hand, &self.set_map, &mut cache) + 1,
             NewGameView::Win => 0,
             NewGameView::Loss => 32,
         });
+
+        self.cache = cache;
         return Some(actions[0]);
     }
 }
